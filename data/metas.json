@@ -1,0 +1,666 @@
+{
+  "semana": [
+    {
+      "nombre": "Lunes",
+      "color": "#7F77DD",
+      "resumen": "Reset, organización, gimnasio con entrenador, pilates",
+      "bloques": [
+        { "hora": "5:00am", "actividad": "Me despierto. Sin celular en el buró. El cuarto está fresco y en silencio." },
+        { "hora": "5:10am", "actividad": "Meditación y estiramientos antes de bajar al gimnasio de la casa." },
+        { "hora": "6:00am", "actividad": "El entrenador llega. Rutina de fuerza. La bolsa estaba lista desde anoche." },
+        { "hora": "7:30am", "actividad": "Me baño. La señora tiene listo el desayuno: alto en proteína, lleno de verdura, fruta y jugo sin filtrar." },
+        { "hora": "8:30am", "actividad": "Reviso pendientes de la semana. Coordino al chofer para el súper." },
+        { "hora": "9:30am", "actividad": "Trabajo desde mi oficina frente al jardín. Latte o matcha. Supervisión de apps y equipos." },
+        { "hora": "1:00pm", "actividad": "Comida con mi pareja en la terraza. Mi mamá casi siempre se une." },
+        { "hora": "3:00pm", "actividad": "Maestra de pilates reformer. Mi pareja o una amiga se une." },
+        { "hora": "5:00pm", "actividad": "Tiempo libre. Leo, pinto, o camino por la propiedad. Rogelio regresa del day pass." },
+        { "hora": "8:00pm", "actividad": "Cena ligera y healthy preparada por la señora." },
+        { "hora": "9:30pm", "actividad": "Leo antes de dormir. Lights out temprano." }
+      ]
+    },
+    {
+      "nombre": "Martes",
+      "color": "#1D9E75",
+      "resumen": "Tennis 5am, natación, paseo perro, trabajo creativo",
+      "bloques": [
+        { "hora": "5:00am", "actividad": "Tennis en nuestra cancha con entrenador y una amiga." },
+        { "hora": "6:10am", "actividad": "Paseo de 20 minutos con Rogelio por la propiedad." },
+        { "hora": "7:00am", "actividad": "Baño, desayuno completo." },
+        { "hora": "8:00am", "actividad": "Natación con entrenador en alberca de 25m." },
+        { "hora": "9:00am", "actividad": "Oficina. Reviso proyectos: apps, propiedades, equipo." },
+        { "hora": "11:00am", "actividad": "Bloque creativo: diseño de ropa con mi modista o sesión de fotos con mi Leica." },
+        { "hora": "1:00pm", "actividad": "Comida planeada desde el sistema de recetas." },
+        { "hora": "3:30pm", "actividad": "Clase de francés o italiano por videollamada." },
+        { "hora": "6:00pm", "actividad": "Tarde libre. Alberca o jardín con audiolibro." },
+        { "hora": "9:00pm", "actividad": "Lectura. Dormir temprano." }
+      ]
+    },
+    {
+      "nombre": "Miércoles",
+      "color": "#D85A30",
+      "resumen": "Gym, nado con entrenador, hobbies, café en el jardín",
+      "bloques": [
+        { "hora": "5:00am", "actividad": "Gym con entrenador en casa." },
+        { "hora": "7:30am", "actividad": "Desayuno. Siempre algo del huerto en el plato." },
+        { "hora": "9:00am", "actividad": "Natación con entrenador en alberca de 25m." },
+        { "hora": "11:00am", "actividad": "Revisión semanal de finanzas. Todo organizado, sin sorpresas." },
+        { "hora": "1:00pm", "actividad": "Comida en familia. Terraza o jardín." },
+        { "hora": "3:00pm", "actividad": "Taller de hobbies: costura de piel, pintura, o proyecto de casa." },
+        { "hora": "6:00pm", "actividad": "Mi pareja y yo tomamos café en el jardín. Revisamos la semana." },
+        { "hora": "9:00pm", "actividad": "Cena ligera. Leo. Duermo." }
+      ]
+    },
+    {
+      "nombre": "Jueves",
+      "color": "#BA7517",
+      "resumen": "Tennis, trabajo profundo, cena con amigas",
+      "bloques": [
+        { "hora": "5:00am", "actividad": "Tennis con entrenador y amiga." },
+        { "hora": "6:10am", "actividad": "Paseo de 20 minutos con Rogelio." },
+        { "hora": "8:00am", "actividad": "Desayuno. Trabajo profundo. Bloque para proyectos propios." },
+        { "hora": "9:00am", "actividad": "Natación con entrenador en alberca de 25m." },
+        { "hora": "12:00pm", "actividad": "Comida. Fruta del jardín, queso de los borregos de la propiedad." },
+        { "hora": "3:00pm", "actividad": "Reunión con equipo si hay algo importante." },
+        { "hora": "7:00pm", "actividad": "Cena con amigas — una vez a la semana." },
+        { "hora": "10:30pm", "actividad": "Regreso. Leo un poco. Duermo." }
+      ]
+    },
+    {
+      "nombre": "Viernes",
+      "color": "#FF3294",
+      "resumen": "Gym, nado, cierre de semana, caballos",
+      "bloques": [
+        { "hora": "5:00am", "actividad": "Gym con entrenador en casa." },
+        { "hora": "7:30am", "actividad": "Desayuno. Rogelio regresa del day pass en la tarde." },
+        { "hora": "9:00am", "actividad": "Natación con entrenador." },
+        { "hora": "11:00am", "actividad": "Cierre de semana en la oficina. Todo listo para el fin de semana." },
+        { "hora": "1:00pm", "actividad": "Comida con mi pareja." },
+        { "hora": "3:00pm", "actividad": "Vuelo el Cessna o salida a caballo por las brechas hacia la playa." },
+        { "hora": "7:00pm", "actividad": "Comienza el fin de semana. Hamacas, alberca, música." },
+        { "hora": "9:00pm", "actividad": "Noche tranquila en casa o plan con pareja." }
+      ]
+    },
+    {
+      "nombre": "Sábado",
+      "color": "#378ADD",
+      "resumen": "Gym, vida social, carnitas, mesa de 20",
+      "bloques": [
+        { "hora": "6:00am", "actividad": "Gym con entrenador." },
+        { "hora": "8:00am", "actividad": "Desayuno relajado. El jardín está precioso a esta hora." },
+        { "hora": "10:00am", "actividad": "La mesa de 20 en la terraza se llena. Familia, amigos, sobrinos." },
+        { "hora": "1:00pm", "actividad": "Carne asada preparada por las señoras. Todo de la propiedad." },
+        { "hora": "4:00pm", "actividad": "Alberca, hamacas, plática. Los niños corren por el jardín." },
+        { "hora": "7:00pm", "actividad": "Cena ligera o escapada a la playa con mi pareja." }
+      ]
+    },
+    {
+      "nombre": "Domingo",
+      "color": "#1D9E75",
+      "resumen": "Sin alarma, playa, descanso activo, pintura",
+      "bloques": [
+        { "hora": "7:00am", "actividad": "Nos despertamos sin alarma. Desayuno en el jardín." },
+        { "hora": "9:00am", "actividad": "Nos vamos a la playa — en la avioneta o en la Bronco." },
+        { "hora": "12:00pm", "actividad": "Playa. Buceo, apnea, kayak, kite surf, paddle board." },
+        { "hora": "4:00pm", "actividad": "Regreso. Una vez al mes: clase de pintura en el estudio o jardín." },
+        { "hora": "6:00pm", "actividad": "Yoga y estiramientos. Preparo mentalmente la semana." },
+        { "hora": "8:00pm", "actividad": "Cena ligera. Leo. Esta semana fue perfecta." }
+      ]
+    }
+  ],
+  "metas": [
+    {
+      "id": "finanzas",
+      "nombre": "Finanzas libres y abundantes",
+      "icono": "trending-up",
+      "tagline": "De deuda a múltiples fuentes de ingreso pasivo. El primer paso ya existe.",
+      "descripcion": "Hoy hay deuda. Eso es real y no se ignora. Pero la deuda no define el destino — define el punto de partida. El weekly planner app está casi listo. Los servicios de AI y automatización ya se pueden vender. El camino de aquí a las rentas, las apps y el semi-retiro existe y es caminable. Solo necesita consistencia y los pasos correctos en el orden correcto.",
+      "realidadHoy": "Deuda de $312,000 pesos en tarjetas. Sin ingresos propios activos. Weekly planner app lista excepto por bugs. Conocimientos de AI, automatizaciones y vibe coding que ya se pueden vender.",
+      "niveles": {
+        "10": [
+          "Múltiples propiedades generando renta mensual",
+          "Apps con ingresos recurrentes y equipo propio",
+          "Semi-retirada: máximo 3 horas de trabajo al día",
+          "Sin deuda. Con patrimonio real y creciendo"
+        ],
+        "5": [
+          "Primera propiedad en renta activa",
+          "ChamBEEtas u otra app con +500 usuarios pagando",
+          "Ingresos mensuales de al menos $80,000 pesos",
+          "Deudas de tarjeta completamente liquidadas"
+        ],
+        "2": [
+          "Weekly planner con +100 usuarios nuevos al mes",
+          "Servicios de AI/automatización vendidos a mínimo 3 empresas",
+          "Deuda reducida en al menos 60%",
+          "Fondo de emergencia de 3 meses iniciado"
+        ],
+        "1": [
+          "Weekly planner lanzado y generando ingresos constantes",
+          "Primer cliente de AI/automatización cerrado",
+          "Plan de pago de deuda activo y respetado",
+          "Ingresos propios cubriendo gastos personales"
+        ],
+        "6m": [
+          "Bugs del weekly planner corregidos y app lanzada",
+          "Primeros 20 usuarios pagando",
+          "Primer servicio de automatización cotizado y vendido",
+          "Presupuesto mensual claro y activo"
+        ]
+      },
+      "accionesHoy": [
+        "Abrir el proyecto del app y corregir UN bug hoy — solo uno",
+        "Escribir en una oración qué problema resuelve el weekly planner",
+        "Listar 5 empresas locales que podrían necesitar automatizaciones",
+        "Calcular exactamente cuánto necesitas generar al mes para cubrir tus gastos"
+      ]
+    },
+    {
+      "id": "tecnologia",
+      "nombre": "Tecnología propia como activo",
+      "icono": "code",
+      "tagline": "Weekly planner, ChamBEEtas, AI y automatizaciones. Construyes herramientas que generan mientras duermes.",
+      "descripcion": "Ya sabes programar. Ya aprendes AI. Ya tienes un producto terminado esperando lanzarse. Eso no es poco — es exactamente donde necesitas estar para que los próximos 10 años sean los que describes. El weekly planner no es solo una app — es la prueba de que puedes construir, lanzar y vender.",
+      "realidadHoy": "Weekly planner app construida con sistema de pagos y registro de usuarios. Faltan corrección de bugs y estrategia de marketing. Aprendiendo AI, automatizaciones y vibe coding activamente.",
+      "niveles": {
+        "10": [
+          "Suite de productos digitales generando ingresos pasivos",
+          "Equipo técnico operando sin presencia diaria",
+          "ChamBEEtas con presencia nacional",
+          "Reputación como constructora de soluciones digitales"
+        ],
+        "5": [
+          "Al menos 3 productos digitales activos y monetizados",
+          "ChamBEEtas lanzado con crecimiento orgánico",
+          "Equipo de al menos 2 desarrolladores",
+          "Ingresos digitales cubriendo 70% del estilo de vida"
+        ],
+        "2": [
+          "Weekly planner con 1,000+ usuarios activos",
+          "MVP de ChamBEEtas en desarrollo",
+          "Portafolio de AI vendido a 5 clientes",
+          "Primer desarrollador colaborando"
+        ],
+        "1": [
+          "Weekly planner generando ingresos recurrentes",
+          "3 clientes de automatización cerrados",
+          "ChamBEEtas validado con usuarios reales",
+          "Rutina de aprendizaje de AI: 1 hora al día"
+        ],
+        "6m": [
+          "Weekly planner lanzado públicamente",
+          "Primeros 50 usuarios pagando $499",
+          "Primer servicio de automatización entregado",
+          "Problema exacto de ChamBEEtas definido"
+        ]
+      },
+      "accionesHoy": [
+        "Lista de bugs pendientes ordenados por importancia",
+        "Buscar en Twitter quién habla de productividad en español — ese es tu mercado",
+        "Ver un tutorial de automatización aplicable mañana",
+        "Escribir el nombre de una empresa a la que le venderías automatizaciones esta semana"
+      ]
+    },
+    {
+      "id": "cuerpo",
+      "nombre": "Cuerpo y salud para toda la vida",
+      "icono": "activity",
+      "tagline": "Tennis, natación, gym, pilates. Ya empezaste — ahora se trata de no parar.",
+      "descripcion": "Ya vas al tennis los martes y jueves a las 5am. Ya nadas martes y jueves a las 8am. Ya vas al gym los lunes. Ya haces pilates cuando tienes energía. Lo que falta es consistencia y reducir el cortisol que el scroll y la incertidumbre financiera generan. El cuerpo ya está respondiendo.",
+      "realidadHoy": "Tennis martes y jueves 5am. Natación martes y jueves 8am. Gym lunes 6am. Pilates ocasional. Cuerpo activo con hábitos reales ya establecidos.",
+      "niveles": {
+        "10": [
+          "Cancha de tennis y alberca de 25m en la propiedad",
+          "Entrenadores propios de gym, tennis y natación",
+          "Pilates reformer en casa con maestra semanal",
+          "Apnea y buceo activos como actividad regular"
+        ],
+        "5": [
+          "Entrenador personal mínimo 3 veces por semana",
+          "Alimentación 100% planeada semanalmente",
+          "Suplementación optimizada y constante",
+          "Meditación diaria consolidada"
+        ],
+        "2": [
+          "Rutina de 5 días de ejercicio sin fallar",
+          "Pilates mínimo 2 veces por semana",
+          "Sin redes sociales antes de entrenar",
+          "Meditación mínimo 10 minutos diarios"
+        ],
+        "1": [
+          "Tennis natación y gym sin interrupciones de más de una semana",
+          "Desayunos siempre nutritivos y planeados",
+          "Celular fuera del cuarto al despertar",
+          "Agregar un día más de movimiento"
+        ],
+        "6m": [
+          "Mantener la racha actual sin faltar una semana completa",
+          "Agregar un día más de ejercicio",
+          "Meditar aunque sean 5 minutos al despertar",
+          "Celular en otro cuarto al dormir"
+        ]
+      },
+      "accionesHoy": [
+        "Poner el celular a cargar en el baño esta noche",
+        "Preparar la ropa del gym para mañana ahora",
+        "Tomar los suplementos si hoy no los tomaste",
+        "Poner alarma de 5 minutos para meditar mañana"
+      ]
+    },
+    {
+      "id": "granja",
+      "nombre": "La granja viva",
+      "icono": "sprout",
+      "tagline": "Atlas ya existe. Tiene 2 años. La granja empieza desde ese caballo.",
+      "descripcion": "Atlas tiene 2 años y ya es tuyo. Eso no es un detalle menor — es la semilla de toda la granja. La permacultura, los borregos, las gallinas, la acuaponía — todo empieza desde ese caballo al que necesitas ir a ver más seguido. La granja no se construye de golpe. Se construye yendo, aprendiendo, metiendo las manos en la tierra.",
+      "realidadHoy": "Atlas existe, tiene 2 años. Necesita visitas más constantes. Sin propiedad propia aún. Interés real en permacultura y vida de campo.",
+      "niveles": {
+        "10": [
+          "Propiedad propia con granja de permacultura moderna",
+          "Dos caballos, borregos, gallinas, acuaponía y huerto",
+          "Velador viviendo en la propiedad",
+          "La propiedad produce frutas, verduras, huevos y lácteos"
+        ],
+        "5": [
+          "Propiedad con terreno suficiente adquirida",
+          "Primer huerto productivo establecido",
+          "Primeras gallinas y estructura básica",
+          "Atlas en la propiedad propia"
+        ],
+        "2": [
+          "Visitar a Atlas mínimo una vez por semana",
+          "Tomar curso de permacultura",
+          "Empezar huerto en macetas",
+          "Definir características del terreno ideal"
+        ],
+        "1": [
+          "Relación activa y constante con Atlas",
+          "Huerto en macetas funcionando",
+          "Visitar una granja de permacultura en Yucatán",
+          "Lista de lo que quiero producir"
+        ],
+        "6m": [
+          "Ir a ver a Atlas esta semana y programar visitas fijas",
+          "Plantar algo esta semana en casa",
+          "Seguir 10 cuentas de permacultura tropical",
+          "Leer un libro sobre permacultura"
+        ]
+      },
+      "accionesHoy": [
+        "Agendar la próxima visita a Atlas ahora en el calendario",
+        "Buscar en YouTube permacultura en Yucatán",
+        "Comprar una planta o semillas esta semana",
+        "Escribir los 5 animales o plantas que sí quieres en tu granja"
+      ]
+    },
+    {
+      "id": "aviacion",
+      "nombre": "Licencia de aviación y Cessna 172",
+      "icono": "plane",
+      "tagline": "La pista, el hangar, el avión. Primero la licencia — todo lo demás viene después.",
+      "descripcion": "El Cessna en la propiedad es la meta a 10 años. Pero la licencia de piloto privado es la meta que puedes empezar ahora mismo. No cuesta lo que crees que cuesta empezar. Y cada hora de vuelo que acumulas es una hora que no puedes quitarte.",
+      "realidadHoy": "Sin licencia de aviación aún. Meta claramente deseada. Requiere tiempo y recursos que vienen con el crecimiento financiero.",
+      "niveles": {
+        "10": [
+          "Cessna 172 propio con hangar en la propiedad",
+          "Pista de aterrizaje a lo largo de la propiedad",
+          "Técnico profesional de mantenimiento",
+          "Vuelos regulares a destinos cercanos"
+        ],
+        "5": [
+          "Licencia de piloto privado activa y vigente",
+          "Horas de práctica regulares en avioneta rentada",
+          "Prácticas en Estados Unidos completadas",
+          "Primer vuelo solo a un destino real"
+        ],
+        "2": [
+          "Clases de vuelo iniciadas formalmente",
+          "Mínimo 20 horas de vuelo acumuladas",
+          "Presupuesto de licencia definido y en ahorro"
+        ],
+        "1": [
+          "Escuela de aviación identificada y contactada",
+          "Plan financiero para horas de vuelo",
+          "Primera clase de vuelo tomada"
+        ],
+        "6m": [
+          "Investigar escuelas de aviación en Mérida o Cancún",
+          "Contactar a un piloto privado",
+          "Calcular costo total de la licencia"
+        ]
+      },
+      "accionesHoy": [
+        "Buscar escuelas de aviación en Mérida en Google",
+        "Ver un video de vuelo en Cessna 172 en YouTube",
+        "Escribir por qué quieres volar — para leerlo cuando sea difícil"
+      ]
+    },
+    {
+      "id": "catamaran",
+      "nombre": "Catamarán en la marina",
+      "icono": "anchor",
+      "tagline": "El mar como patio trasero. Buceo, apnea, kite surf. La vida afuera.",
+      "descripcion": "El catamarán es una meta que llega cuando las finanzas están sólidas. Pero el mar no espera — ya puedes estar en él. Rentar, tomar cursos, acumular horas en el agua. Cuando llegue el momento de comprar, ya serás alguien que sabe navegar.",
+      "realidadHoy": "Sin catamarán aún. Yucatán tiene mar accesible. Meta financieramente dependiente del crecimiento de ingresos.",
+      "niveles": {
+        "10": [
+          "Catamarán propio en marina de Progreso o Telchac",
+          "Salidas al mar mínimo dos veces al mes",
+          "Equipo completo de buceo, apnea, kite surf y paddle",
+          "Viajes a islas y destinos del Caribe"
+        ],
+        "5": [
+          "Presupuesto para catamarán activo y creciendo",
+          "Certificación de navegación obtenida",
+          "Equipo de buceo propio y completo",
+          "Salidas frecuentes aunque sea rentando"
+        ],
+        "2": [
+          "Certificación de buceo actualizada",
+          "Ir al mar mínimo una vez al mes",
+          "Investigar tipos de catamarán y costos reales"
+        ],
+        "1": [
+          "Tomar curso de navegación básica",
+          "Ir al mar al menos dos veces este año",
+          "Definir qué equipo de agua quiero primero"
+        ],
+        "6m": [
+          "Planear una salida al mar este mes",
+          "Buscar cursos de buceo en Mérida o Progreso",
+          "Visitar la marina y platicar con propietarios"
+        ]
+      },
+      "accionesHoy": [
+        "Planear una ida al mar este fin de semana",
+        "Buscar cursos de buceo en Mérida",
+        "Ver un documental de navegación o apnea en YouTube"
+      ]
+    },
+    {
+      "id": "pareja",
+      "nombre": "Relación de pareja sólida y romántica",
+      "icono": "heart",
+      "tagline": "Socios de vida, de negocio y de aventura. Se cuida, se cultiva, se elige todos los días.",
+      "descripcion": "Una relación que funciona como la que describes no es suerte — es diseño. Es elegir todos los días. Es tener espacios propios y también rituales compartidos. Es construir negocios juntos sin que eso los consuma. Es irse de aventura y también sentarse en silencio. Eso se construye ahora, en la vida cotidiana de hoy.",
+      "realidadHoy": "Relación activa y presente. La base ya existe. Se construye en los gestos de hoy.",
+      "niveles": {
+        "10": [
+          "Espacios propios dentro de la misma propiedad",
+          "Proyectos de negocio compartidos sin tensión",
+          "Rituales consolidados: playa, pintura, café en el jardín",
+          "Viajes de aventura como identidad compartida"
+        ],
+        "5": [
+          "Al menos un proyecto de negocio construido juntos",
+          "Un ritual semanal de pareja inamovible",
+          "Un viaje de aventura al año juntos"
+        ],
+        "2": [
+          "Conversaciones honestas sobre el futuro compartido",
+          "Una actividad nueva iniciada juntos",
+          "Planear el primer viaje de aventura"
+        ],
+        "1": [
+          "Establecer un ritual semanal aunque sea pequeño",
+          "Planear y hacer un viaje juntos este año",
+          "Conversación profunda sobre la visión compartida"
+        ],
+        "6m": [
+          "Proponer una actividad nueva juntos este mes",
+          "Planear una salida especial de un día",
+          "Decirle algo específico que aprecias esta semana"
+        ]
+      },
+      "accionesHoy": [
+        "Decirle algo específico que aprecias de él hoy",
+        "Proponer algo para hacer juntos este fin de semana",
+        "Apagar el celular una hora esta noche y estar presente"
+      ]
+    },
+    {
+      "id": "casa",
+      "nombre": "La casa como obra maestra funcional",
+      "icono": "home",
+      "tagline": "Diseñada con intención. Cada espacio tiene función, orden y alma.",
+      "descripcion": "La casa de 10 años tiene hangar, cancha, alberca y bungalows. Pero la casa de hoy también puede tener intención. El orden, la limpieza, los espacios organizados — ya sabes hacerlo cuando te lo propones. La meta no empieza cuando tengas la casa grande. Empieza esta semana.",
+      "realidadHoy": "Capacidad real de tener espacios organizados cuando se lo propone. Sin propiedad propia aún. La casa ideal está claramente imaginada.",
+      "niveles": {
+        "10": [
+          "Propiedad diseñada desde cero con arquitecto",
+          "Oficina con jardín, cafetera y monitores",
+          "Bungalows para las mamás integrados",
+          "Bocinas empotradas, ventanas por todas partes, jardín-selva"
+        ],
+        "5": [
+          "Propiedad con espacio para granja y bungalows identificada",
+          "Planos definidos con arquitecto",
+          "Casa actual impecablemente organizada"
+        ],
+        "2": [
+          "Moodboard completo de la casa ideal",
+          "Visitar propiedades que se acerquen a la visión",
+          "Hablar con un arquitecto"
+        ],
+        "1": [
+          "Casa actual organizada por sistema, no por impulso",
+          "Lista clara de los espacios que quiero",
+          "Un cambio real hecho en casa"
+        ],
+        "6m": [
+          "Organizar un espacio de la casa esta semana",
+          "Crear tablero de Pinterest de la casa ideal",
+          "Sistema simple para mantener el orden diario"
+        ]
+      },
+      "accionesHoy": [
+        "Ordenar una gaveta o espacio pequeño ahora mismo",
+        "Guardar 5 fotos de casas inspiradoras en Pinterest",
+        "Escribir los 5 espacios que sí quieres en tu casa ideal"
+      ]
+    },
+    {
+      "id": "mamas",
+      "nombre": "Las mamás integradas con dignidad",
+      "icono": "users",
+      "tagline": "Cerca, con espacio propio, con todo lo que necesitan. Un acto de amor con diseño.",
+      "descripcion": "Tu mamá está discapacitada y tú la cuidas. Eso no es una carga — es un acto de amor enorme que habla de quién eres. La meta a 10 años es que ese cuidado esté estructurado de forma que no te agote, que ella tenga dignidad total, y que ambas tengan vida propia dentro de la misma propiedad.",
+      "realidadHoy": "Mamá discapacitada. Viven de sus ingresos. La cuidas actualmente. Meta de bungalow accesible dependiente del crecimiento financiero.",
+      "niveles": {
+        "10": [
+          "Bungalow accesible para mamá en la propiedad",
+          "Bungalow independiente para suegra con jardín",
+          "Van adaptada y chofer con mamá como prioridad",
+          "Cuidado estructurado que no depende solo de ti"
+        ],
+        "5": [
+          "Propiedad con espacio para bungalow identificada",
+          "Ingresos propios cubriendo gastos de ambas sin tensión",
+          "Red de apoyo para el cuidado establecida"
+        ],
+        "2": [
+          "Ingresos propios cubriendo gastos personales",
+          "Plan de largo plazo para el cuidado conversado",
+          "Al menos una persona de apoyo identificada"
+        ],
+        "1": [
+          "Ingresos propios activos aunque sean pequeños",
+          "Rutina de cuidado que no interrumpa bloques de trabajo",
+          "Conversación honesta con mamá sobre el futuro"
+        ],
+        "6m": [
+          "Definir horarios fijos de trabajo que respeten el cuidado",
+          "Identificar qué necesita mamá que hoy no tiene",
+          "Buscar apoyo puntual para trabajar con concentración"
+        ]
+      },
+      "accionesHoy": [
+        "Decirle a tu mamá algo bonito hoy",
+        "Escribir a qué horas puedes trabajar sin interrupciones",
+        "Identificar una persona que pueda apoyarte con mamá 2 horas a la semana"
+      ]
+    },
+    {
+      "id": "impacto",
+      "nombre": "Impacto social activo",
+      "icono": "heart-handshake",
+      "tagline": "Bruma y Borboton. El comedor y la asociación de esterilización. No son hobbies — son identidad.",
+      "descripcion": "Estos proyectos ya viven en tu cabeza con nombre y todo — Bruma y Borboton. Eso significa que ya son reales a nivel de visión. El impacto social no espera a que tengas todo resuelto — crece en paralelo. Empieza pequeño, empieza ahora.",
+      "realidadHoy": "Proyectos con nombre y visión clara. Sin estructura formal aún. Requieren estabilidad financiera mínima para sostenerse.",
+      "niveles": {
+        "10": [
+          "Comedor Bruma y Borboton operando de forma sostenible",
+          "Asociación de esterilización con alcance medible y equipo propio",
+          "Impacto documentado: personas alimentadas, animales esterilizados"
+        ],
+        "5": [
+          "Comedor con operación regular aunque sea pequeña",
+          "Primera campaña de esterilización organizada",
+          "Estructura legal de la asociación iniciada"
+        ],
+        "2": [
+          "Modelo operativo del comedor definido en papel",
+          "Conexión con organizaciones en Mérida",
+          "Primeros aliados o voluntarios identificados"
+        ],
+        "1": [
+          "Misión de cada proyecto escrita con claridad",
+          "Una acción concreta de impacto realizada",
+          "Red de contactos construida"
+        ],
+        "6m": [
+          "Escribir la misión de Bruma y Borboton en una oración",
+          "Identificar una organización similar y contactarla",
+          "Una acción de impacto este mes"
+        ]
+      },
+      "accionesHoy": [
+        "Escribir en una oración qué es Bruma y Borboton y para quién es",
+        "Buscar una organización de esterilización en Mérida en Google",
+        "Compartir la idea con alguien que podría sumarse"
+      ]
+    },
+    {
+      "id": "expansion",
+      "nombre": "Expansión intelectual continua",
+      "icono": "book-open",
+      "tagline": "Francés, italiano, libros, audiolibros. La mente como el músculo más importante.",
+      "descripcion": "Tu vocabulario, tu forma de comunicarte, tu capacidad de aprender — todo mejora cuando el scroll disminuye y la lectura aumenta. Ya lees. Ya escuchas. La diferencia entre hoy y la versión de 10 años no es un salto enorme — es consistencia sostenida.",
+      "realidadHoy": "Hábito de lectura presente pero inconsistente. Interés real en idiomas. El scroll consume tiempo que podría ser de aprendizaje.",
+      "niveles": {
+        "10": [
+          "Francés e italiano conversacionales fluidos",
+          "Un libro terminado por semana como hábito inamovible",
+          "Biblioteca personal curada",
+          "Audiolibros integrados en toda la rutina"
+        ],
+        "5": [
+          "Un idioma conversacional — francés o italiano primero",
+          "Mínimo 2 libros al mes de forma consistente",
+          "Audiolibros en gym, carro y tareas"
+        ],
+        "2": [
+          "Clases de idioma semanales activas sin parar",
+          "Un libro al mes terminado como mínimo",
+          "Lista de lectura anual definida cada enero"
+        ],
+        "1": [
+          "Clases de francés o italiano iniciadas y constantes",
+          "Un audiolibro activo en todo momento",
+          "Terminar al menos 8 libros este año"
+        ],
+        "6m": [
+          "Contratar o empezar clases de un idioma este mes",
+          "Instalar Audible o Storytel y empezar un libro esta semana",
+          "Terminar el libro que tienes a medias"
+        ]
+      },
+      "accionesHoy": [
+        "Poner un audiolibro ahora en lo que haces algo con las manos",
+        "Buscar clases de francés o italiano en Mérida o en línea",
+        "Escribir los 3 libros que quieres leer este mes"
+      ]
+    },
+    {
+      "id": "red-social",
+      "nombre": "Red social y vida cultural viva",
+      "icono": "coffee",
+      "tagline": "Amigas reales, cenas, comunidad curada. La vida social no es un lujo — es salud.",
+      "descripcion": "La mesa de 20 llena todos los fines de semana es la meta de 10 años. Pero la amiga con la que no has hablado en semanas existe hoy. La vida social se construye en los gestos pequeños y constantes, no en las reuniones grandes y esporádicas.",
+      "realidadHoy": "Red social existente. Vida social activa pero menos intencional de lo que podría ser. Las amigas y la comunidad ya están — se trata de cultivarlas.",
+      "niveles": {
+        "10": [
+          "Círculo cercano de amigas con relaciones profundas",
+          "Mesa de 20 llena los fines de semana",
+          "Clase de pintura mensual con mi pareja",
+          "Casa que invita a quedarse"
+        ],
+        "5": [
+          "Cena semanal con amigas como ritual inamovible",
+          "Al menos un evento grande en casa al mes",
+          "Una actividad cultural activa"
+        ],
+        "2": [
+          "Cena mensual con amigas establecida y respetada",
+          "Una actividad nueva con mi pareja iniciada",
+          "Las 5 amistades más importantes identificadas y cultivadas"
+        ],
+        "1": [
+          "Proponer una cena de amigas este mes",
+          "Organizar una reunión en casa aunque sea pequeña",
+          "Retomar una actividad social que habías dejado"
+        ],
+        "6m": [
+          "Llamar a esa amiga con la que tienes tiempo sin hablar",
+          "Proponer algo social esta semana",
+          "Decirle a alguien importante cuánto lo aprecias"
+        ]
+      },
+      "accionesHoy": [
+        "Mandar un mensaje a alguien que extrañas ahora mismo",
+        "Proponer una cena o café esta semana",
+        "Escribir los nombres de las 5 personas que te llenan de energía"
+      ]
+    },
+    {
+      "id": "libertad",
+      "nombre": "Libertad geográfica real",
+      "icono": "map",
+      "tagline": "6 meses en Mérida, 6 meses en el mundo. La vida funciona igual desde cualquier lugar.",
+      "descripcion": "La libertad geográfica no es un lujo — es una consecuencia de haber construido bien. Cuando el sistema funciona sin ti, puedes estar en Costa Rica, en Italia, en una isla del Caribe. El trabajo remoto es de 2 a 3 horas. El resto es vivir.",
+      "realidadHoy": "Sin sistema de operación remota aún. Meta dependiente del crecimiento financiero y tecnológico. Mérida como base sólida actual.",
+      "niveles": {
+        "10": [
+          "Medio año fuera sin que la operación sufra",
+          "Viajes de aventura con mi pareja: trekking, buceo, escalada",
+          "Casa de playa remodelada",
+          "Viajes en Cessna a destinos cercanos"
+        ],
+        "5": [
+          "Primer viaje largo de más de 3 semanas trabajando remoto",
+          "Protocolo de viaje establecido",
+          "Casa de playa con al menos una remodelación"
+        ],
+        "2": [
+          "Primer viaje de trabajo remoto de 2 semanas",
+          "Protocolo de ausencia de la casa documentado",
+          "Identificar quién cubre cada responsabilidad"
+        ],
+        "1": [
+          "Planear el primer viaje remoto de 2 semanas",
+          "Lista de lo que necesito resolver para irme",
+          "Conversación con mi pareja sobre el primer viaje largo"
+        ],
+        "6m": [
+          "Escribir los 3 destinos a los que iría este año",
+          "Ver qué necesitaría resolver para irme 2 semanas",
+          "Buscar comunidad de nómadas digitales en México"
+        ]
+      },
+      "accionesHoy": [
+        "Escribir los 3 destinos a los que irías este año",
+        "Ver qué necesitarías resolver para irte 2 semanas mañana",
+        "Checar vuelos de Mérida a algún destino que te llame"
+      ]
+    }
+  ]
+}
