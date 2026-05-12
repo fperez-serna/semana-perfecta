@@ -2,7 +2,6 @@ let METAS_DATA = null;
 
 const NIVEL_ORDEN = ['10', '5', '2', '1', '6m'];
 
-// Escala de grises para los niveles
 const NIVEL_COLORES = {
   '10': { bg: '#111111', text: '#FFFFFF' },
   '5':  { bg: '#444444', text: '#FFFFFF' },
@@ -22,22 +21,60 @@ const NIVEL_LABELS = {
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
+// Caché de datos Firestore
+let progresoCache = {};
+let notasCache = {};
+let avancesCache = {};
+let semanaEditsCache = {};
+
 async function init() {
   try {
     const res = await fetch('data/metas.json');
     METAS_DATA = await res.json();
   } catch (e) {
-    document.body.innerHTML = '<p style="color:#888;padding:40px;font-family:Inter,sans-serif;">Error cargando datos. Corre la app con: <code>python3 -m http.server 8080</code></p>';
+    document.body.innerHTML = '<p style="color:#888;padding:40px;font-family:Inter,sans-serif;">Error cargando datos.</p>';
     return;
   }
+
+  // Carga inicial de Firestore en paralelo
+  const hoy = new Date().toISOString().split('T')[0];
+  const [progresoSnap, notasSnap, semanaSnap, accionesDoc] = await Promise.all([
+    db.collection('progreso').get(),
+    db.collection('notas_metas').get(),
+    db.collection('semana').get(),
+    db.collection('acciones_ia').doc(hoy).get(),
+  ]);
+
+  progresoSnap.forEach(doc => { progresoCache[doc.id] = doc.data(); });
+  notasSnap.forEach(doc => { notasCache[doc.id] = doc.data().texto || ''; });
+  semanaSnap.forEach(doc => { semanaEditsCache[doc.id] = doc.data(); });
 
   renderHeroDate();
   renderSemana();
   renderMetas();
-  renderAcciones();
+  renderAcciones(accionesDoc.exists ? accionesDoc.data().acciones : []);
   renderProgreso();
   setupModalSelect();
+
+  // Listener en tiempo real para avances (refleja lo que registre el bot de Telegram)
+  db.collection('avances').orderBy('timestamp', 'desc').onSnapshot(snap => {
+    avancesCache = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      if (!avancesCache[d.metaId]) avancesCache[d.metaId] = [];
+      avancesCache[d.metaId].push({ id: doc.id, ...d });
+    });
+    // Actualizar secciones de avances visibles
+    if (METAS_DATA) {
+      METAS_DATA.metas.forEach(meta => {
+        const el = document.getElementById(`avances-${meta.id}`);
+        if (el) el.innerHTML = `<div class="meta-avances-label">Mis avances</div>${buildAvancesHTML(meta.id)}`;
+      });
+    }
+  });
 }
+
+// === FECHA ===
 
 function renderHeroDate() {
   const hoy = new Date();
@@ -53,20 +90,19 @@ function renderSemana() {
   METAS_DATA.semana.forEach((dia, diaIndex) => {
     const card = document.createElement('div');
     card.className = 'dia-card';
+    const diaEdits = semanaEditsCache[`dia_${diaIndex}`] || {};
 
     const bloquesHTML = dia.bloques.map((b, bloqueIndex) => {
-      const savedHora = localStorage.getItem(`semana_${diaIndex}_${bloqueIndex}_hora`) || b.hora;
-      const savedActividad = localStorage.getItem(`semana_${diaIndex}_${bloqueIndex}_actividad`) || b.actividad;
+      const savedHora = diaEdits[`bloque_${bloqueIndex}_hora`] || b.hora;
+      const savedActividad = diaEdits[`bloque_${bloqueIndex}_actividad`] || b.actividad;
       return `
         <div class="bloque">
-          <span class="bloque-hora editable"
-            contenteditable="true"
+          <span class="bloque-hora editable" contenteditable="true"
             data-dia="${diaIndex}" data-bloque="${bloqueIndex}" data-campo="hora"
             onblur="guardarBloque(this)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
           >${savedHora}</span>
-          <span class="bloque-actividad editable"
-            contenteditable="true"
+          <span class="bloque-actividad editable" contenteditable="true"
             data-dia="${diaIndex}" data-bloque="${bloqueIndex}" data-campo="actividad"
             onblur="guardarBloque(this)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
@@ -91,8 +127,11 @@ function renderSemana() {
 }
 
 function guardarBloque(el) {
-  const key = `semana_${el.dataset.dia}_${el.dataset.bloque}_${el.dataset.campo}`;
-  localStorage.setItem(key, el.textContent.trim());
+  const field = `bloque_${el.dataset.bloque}_${el.dataset.campo}`;
+  db.collection('semana').doc(`dia_${el.dataset.dia}`).set(
+    { [field]: el.textContent.trim() },
+    { merge: true }
+  );
 }
 
 // === METAS ===
@@ -101,16 +140,16 @@ function renderMetas() {
   const container = document.getElementById('metas-cards');
 
   METAS_DATA.metas.forEach(meta => {
-    const savedNota = localStorage.getItem(`progreso_notas_${meta.id}`) || meta.realidadHoy || '';
+    const savedNota = notasCache[meta.id] || meta.realidadHoy || '';
 
     const nivelesHTML = NIVEL_ORDEN.map((nivelKey, nivelIndex) => {
       const pasos = meta.niveles[nivelKey] || [];
       const color = NIVEL_COLORES[nivelKey];
       const label = NIVEL_LABELS[nivelKey];
+      const progresoMeta = progresoCache[meta.id] || {};
 
       const pasosHTML = pasos.map((paso, pasoIndex) => {
-        const storageKey = `meta_${meta.id}_paso_${nivelIndex}_${pasoIndex}`;
-        const completado = localStorage.getItem(storageKey) === 'true';
+        const completado = progresoMeta[`paso_${nivelIndex}_${pasoIndex}`] === true;
         return `
           <li class="paso-item${completado ? ' completado' : ''}">
             <input type="checkbox" class="paso-checkbox"
@@ -176,9 +215,17 @@ function renderMetas() {
 
   lucide.createIcons();
 
+  // Auto-guardar notas en Firestore con debounce
   document.querySelectorAll('.meta-hoy-texto').forEach(el => {
+    let timer;
     el.addEventListener('input', () => {
-      localStorage.setItem(`progreso_notas_${el.dataset.metaId}`, el.textContent);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        db.collection('notas_metas').doc(el.dataset.metaId).set(
+          { texto: el.textContent },
+          { merge: true }
+        );
+      }, 800);
     });
   });
 }
@@ -186,46 +233,38 @@ function renderMetas() {
 // === AVANCES ===
 
 function buildAvancesHTML(metaId) {
-  const avances = JSON.parse(localStorage.getItem(`avances_${metaId}`) || '[]');
-  if (avances.length === 0) {
-    return '<p class="avance-empty">Aún no hay avances registrados.</p>';
-  }
-  return avances
-    .map((a, i) => ({ ...a, idx: i }))
-    .reverse()
-    .map(a => `
-      <div class="avance-item" id="avance-item-${metaId}-${a.idx}">
-        <span class="avance-fecha">${a.fecha}</span>
-        <span class="avance-texto" id="avance-texto-${metaId}-${a.idx}">${a.texto}</span>
-        <div class="avance-btns">
-          <button class="avance-btn" id="avance-edit-btn-${metaId}-${a.idx}"
-            onclick="editarAvance('${metaId}', ${a.idx})" title="Editar">✎</button>
-          <button class="avance-btn avance-btn-del"
-            onclick="borrarAvance('${metaId}', ${a.idx})" title="Borrar">×</button>
-        </div>
+  const avances = avancesCache[metaId] || [];
+  if (avances.length === 0) return '<p class="avance-empty">Aún no hay avances registrados.</p>';
+  return avances.map(a => `
+    <div class="avance-item">
+      <span class="avance-fecha">${a.fecha || ''}</span>
+      <span class="avance-texto" id="avance-texto-${a.id}">${a.texto}</span>
+      <div class="avance-btns">
+        <button class="avance-btn" id="avance-edit-btn-${a.id}"
+          onclick="editarAvance('${metaId}', '${a.id}')" title="Editar">✎</button>
+        <button class="avance-btn avance-btn-del"
+          onclick="borrarAvance('${a.id}')" title="Borrar">×</button>
       </div>
-    `).join('');
+    </div>
+  `).join('');
 }
 
-function editarAvance(metaId, index) {
-  const textoEl = document.getElementById(`avance-texto-${metaId}-${index}`);
-  const editBtn = document.getElementById(`avance-edit-btn-${metaId}-${index}`);
+function editarAvance(metaId, avanceId) {
+  const textoEl = document.getElementById(`avance-texto-${avanceId}`);
+  const editBtn = document.getElementById(`avance-edit-btn-${avanceId}`);
+  if (!textoEl) return;
 
   if (textoEl.contentEditable === 'true') {
-    // Guardar
-    const avances = JSON.parse(localStorage.getItem(`avances_${metaId}`) || '[]');
-    avances[index].texto = textoEl.textContent.trim();
-    localStorage.setItem(`avances_${metaId}`, JSON.stringify(avances));
+    const nuevoTexto = textoEl.textContent.trim();
+    db.collection('avances').doc(avanceId).update({ texto: nuevoTexto });
     textoEl.contentEditable = 'false';
     textoEl.classList.remove('editando');
     editBtn.textContent = '✎';
     showToast('Avance actualizado');
   } else {
-    // Activar edición
     textoEl.contentEditable = 'true';
     textoEl.classList.add('editando');
     textoEl.focus();
-    // Mover cursor al final
     const range = document.createRange();
     range.selectNodeContents(textoEl);
     range.collapse(false);
@@ -235,31 +274,22 @@ function editarAvance(metaId, index) {
   }
 }
 
-function borrarAvance(metaId, index) {
-  const avances = JSON.parse(localStorage.getItem(`avances_${metaId}`) || '[]');
-  avances.splice(index, 1);
-  localStorage.setItem(`avances_${metaId}`, JSON.stringify(avances));
-
-  const container = document.getElementById(`avances-${metaId}`);
-  container.innerHTML = `
-    <div class="meta-avances-label">Mis avances</div>
-    ${buildAvancesHTML(metaId)}
-  `;
+function borrarAvance(avanceId) {
+  db.collection('avances').doc(avanceId).delete();
   showToast('Avance eliminado');
 }
 
 // === ACCIONES DE HOY ===
 
-function renderAcciones() {
+function renderAcciones(accionesIA) {
   const container = document.getElementById('acciones-estaticas');
 
   METAS_DATA.metas.forEach(meta => {
-    const acciones = meta.accionesHoy.slice(0, 3);
     const group = document.createElement('div');
     group.className = 'acciones-meta-group';
     group.innerHTML = `
       <div class="acciones-meta-nombre">${meta.nombre}</div>
-      ${acciones.map(a => `
+      ${meta.accionesHoy.slice(0, 3).map(a => `
         <div class="accion-estatica-item">
           <div class="accion-dot"></div>
           <span>${a}</span>
@@ -269,30 +299,16 @@ function renderAcciones() {
     container.appendChild(group);
   });
 
-  const hoy = new Date().toISOString().split('T')[0];
-  const savedIA = JSON.parse(localStorage.getItem(`ia_acciones_${hoy}`) || '[]');
-  if (savedIA.length > 0) renderIAacciones(savedIA);
+  if (accionesIA && accionesIA.length > 0) renderIAacciones(accionesIA);
 }
 
 // === PROGRESO ===
 
 function renderProgreso() {
   const container = document.getElementById('progreso-cards');
-
   METAS_DATA.metas.forEach(meta => {
-    let total = 0;
-    let completados = 0;
-
-    NIVEL_ORDEN.forEach((nivelKey, nivelIndex) => {
-      const pasos = meta.niveles[nivelKey] || [];
-      pasos.forEach((_, pasoIndex) => {
-        total++;
-        if (localStorage.getItem(`meta_${meta.id}_paso_${nivelIndex}_${pasoIndex}`) === 'true') completados++;
-      });
-    });
-
+    const { total, completados } = contarPasos(meta);
     const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
-
     const item = document.createElement('div');
     item.className = 'progreso-item';
     item.dataset.metaId = meta.id;
@@ -307,34 +323,45 @@ function renderProgreso() {
   });
 }
 
+function contarPasos(meta) {
+  let total = 0, completados = 0;
+  const progresoMeta = progresoCache[meta.id] || {};
+  NIVEL_ORDEN.forEach((nivelKey, nivelIndex) => {
+    (meta.niveles[nivelKey] || []).forEach((_, pasoIndex) => {
+      total++;
+      if (progresoMeta[`paso_${nivelIndex}_${pasoIndex}`] === true) completados++;
+    });
+  });
+  return { total, completados };
+}
+
 // === HELPERS ===
 
 function toggleCard(header) {
   header.parentElement.classList.toggle('open');
 }
 
-function togglePaso(checkbox) {
-  const key = `meta_${checkbox.dataset.meta}_paso_${checkbox.dataset.nivel}_${checkbox.dataset.paso}`;
-  localStorage.setItem(key, checkbox.checked);
+async function togglePaso(checkbox) {
+  const { meta: metaId, nivel: nivelIndex, paso: pasoIndex } = checkbox.dataset;
+  const field = `paso_${nivelIndex}_${pasoIndex}`;
+
+  // Actualizar caché y UI de inmediato (optimistic)
+  if (!progresoCache[metaId]) progresoCache[metaId] = {};
+  progresoCache[metaId][field] = checkbox.checked;
   checkbox.parentElement.classList.toggle('completado', checkbox.checked);
-  updateProgreso(checkbox.dataset.meta);
+  updateProgreso(metaId);
+
+  // Guardar en Firestore
+  await db.collection('progreso').doc(metaId).set(
+    { [field]: checkbox.checked },
+    { merge: true }
+  );
 }
 
 function updateProgreso(metaId) {
   const meta = METAS_DATA.metas.find(m => m.id === metaId);
   if (!meta) return;
-
-  let total = 0;
-  let completados = 0;
-
-  NIVEL_ORDEN.forEach((nivelKey, nivelIndex) => {
-    const pasos = meta.niveles[nivelKey] || [];
-    pasos.forEach((_, pasoIndex) => {
-      total++;
-      if (localStorage.getItem(`meta_${meta.id}_paso_${nivelIndex}_${pasoIndex}`) === 'true') completados++;
-    });
-  });
-
+  const { total, completados } = contarPasos(meta);
   const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
   const item = document.querySelector(`#progreso-cards .progreso-item[data-meta-id="${metaId}"]`);
   if (item) {
@@ -368,7 +395,7 @@ function closeModal() {
   document.getElementById('modal-avance').classList.add('hidden');
 }
 
-function guardarAvance() {
+async function guardarAvance() {
   const metaId = document.getElementById('modal-meta-select').value;
   const texto = document.getElementById('modal-texto').value.trim();
   if (!texto) return;
@@ -377,17 +404,14 @@ function guardarAvance() {
   const fecha = `${hoy.getDate()}/${hoy.getMonth() + 1}/${hoy.getFullYear()}`;
   const hora = hoy.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-  const avances = JSON.parse(localStorage.getItem(`avances_${metaId}`) || '[]');
-  avances.push({ fecha: `${fecha} ${hora}`, texto });
-  localStorage.setItem(`avances_${metaId}`, JSON.stringify(avances));
-
-  const container = document.getElementById(`avances-${metaId}`);
-  if (container) {
-    container.innerHTML = `
-      <div class="meta-avances-label">Mis avances</div>
-      ${buildAvancesHTML(metaId)}
-    `;
-  }
+  await db.collection('avances').add({
+    metaId,
+    texto,
+    fecha: `${fecha} ${hora}`,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    tipo: 'avance',
+    fuente: 'web',
+  });
 
   closeModal();
   showToast('¡Avance registrado!');
@@ -404,10 +428,7 @@ function showToast(msg) {
 
 async function triggerGenerateActions() {
   const apiKey = localStorage.getItem('claude_api_key');
-  if (!apiKey) {
-    openApiKeyModal();
-    return;
-  }
+  if (!apiKey) { openApiKeyModal(); return; }
   await generateActions();
 }
 
@@ -417,14 +438,7 @@ async function generateActions() {
 
   try {
     const progreso = METAS_DATA.metas.map(meta => {
-      let total = 0, completados = 0;
-      NIVEL_ORDEN.forEach((nivelKey, nivelIndex) => {
-        const pasos = meta.niveles[nivelKey] || [];
-        pasos.forEach((_, pasoIndex) => {
-          total++;
-          if (localStorage.getItem(`meta_${meta.id}_paso_${nivelIndex}_${pasoIndex}`) === 'true') completados++;
-        });
-      });
+      const { total, completados } = contarPasos(meta);
       return { nombre: meta.nombre, completados, total };
     });
 
@@ -433,13 +447,12 @@ async function generateActions() {
     if (resultado && resultado.length > 0) {
       const hoy = new Date().toISOString().split('T')[0];
       const saved = resultado.map(r => ({ ...r, completada: false }));
-      localStorage.setItem(`ia_acciones_${hoy}`, JSON.stringify(saved));
+      await db.collection('acciones_ia').doc(hoy).set({ acciones: saved });
       renderIAacciones(saved);
     }
   } catch (e) {
-    document.getElementById('ia-resultado').innerHTML = `
-      <p style="color:var(--text-secondary);font-size:13px;padding:12px 0;">${e.message || 'Error al generar acciones. Verifica tu API key.'}</p>
-    `;
+    document.getElementById('ia-resultado').innerHTML =
+      `<p style="color:var(--text-secondary);font-size:13px;padding:12px 0;">${e.message}</p>`;
   } finally {
     document.getElementById('ia-loading').classList.add('hidden');
   }
@@ -461,12 +474,13 @@ function renderIAacciones(acciones) {
   `).join('');
 }
 
-function toggleIAaccion(index, checkbox) {
+async function toggleIAaccion(index, checkbox) {
   const hoy = new Date().toISOString().split('T')[0];
-  const acciones = JSON.parse(localStorage.getItem(`ia_acciones_${hoy}`) || '[]');
+  const doc = await db.collection('acciones_ia').doc(hoy).get();
+  const acciones = doc.data()?.acciones || [];
   if (acciones[index]) {
     acciones[index].completada = checkbox.checked;
-    localStorage.setItem(`ia_acciones_${hoy}`, JSON.stringify(acciones));
+    await db.collection('acciones_ia').doc(hoy).set({ acciones });
   }
 }
 

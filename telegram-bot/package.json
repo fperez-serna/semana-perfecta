@@ -1,0 +1,17 @@
+{
+  "name": "semana-perfecta-bot",
+  "version": "1.0.0",
+  "description": "Bot de Telegram personal para Fernanda — Semana Perfecta",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.0.0",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
