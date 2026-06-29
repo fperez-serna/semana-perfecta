@@ -61,6 +61,54 @@ Tu estilo:
 - Español mexicano natural, algo de inglés, alguna palabra en francés de vez en cuando.
 - Máximo 2-3 párrafos cortos. Menos es más.`;
 
+// === HELPERS — MEMORIA Y CONVERSACIÓN ===
+
+async function getDatosImportantes() {
+  const snap = await db.collection('memoria').orderBy('timestamp', 'asc').get();
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function guardarDatoImportante(texto) {
+  await db.collection('memoria').add({
+    texto,
+    fecha: new Date().toLocaleDateString('es-MX'),
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+async function borrarDatoImportante(id) {
+  await db.collection('memoria').doc(id).delete();
+}
+
+async function guardarMensajeConversacion(role, texto) {
+  await db.collection('conversacion').add({
+    role,
+    texto: texto.slice(0, 2000),
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+async function getHistorialReciente(limite = 30) {
+  const snap = await db.collection('conversacion')
+    .orderBy('timestamp', 'desc')
+    .limit(limite)
+    .get();
+  const mensajes = snap.docs.reverse().map(d => d.data());
+  // Asegurar alternancia user/assistant y que termine en assistant (no en user)
+  const resultado = [];
+  let lastRole = null;
+  for (const m of mensajes) {
+    if (m.role !== lastRole) {
+      resultado.push(m);
+      lastRole = m.role;
+    }
+  }
+  while (resultado.length > 0 && resultado[resultado.length - 1].role === 'user') {
+    resultado.pop();
+  }
+  return resultado;
+}
+
 // === HELPERS — SEMANA PERFECTA ===
 
 async function guardarAvance(metaId, texto, tipo = 'avance') {
@@ -194,6 +242,40 @@ async function llamarClaude(userMessage, contextoExtra = '') {
   return response.content[0]?.text || '';
 }
 
+async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
+  try {
+    const [datos, historial] = await Promise.all([
+      getDatosImportantes(),
+      getHistorialReciente(30),
+    ]);
+
+    let systemFinal = SYSTEM_PROMPT;
+    if (datos.length > 0) {
+      systemFinal += '\n\n## Lo que recuerdas de Fernanda (datos importantes guardados):\n'
+        + datos.map(d => `- ${d.texto}`).join('\n');
+    }
+    if (extraCtx) {
+      systemFinal += '\n\nContexto adicional:\n' + extraCtx;
+    }
+
+    const messages = [
+      ...historial.map(m => ({ role: m.role, content: m.texto })),
+      { role: 'user', content: userMessage },
+    ];
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: systemFinal,
+      messages,
+    });
+    return response.content[0]?.text || '';
+  } catch (e) {
+    console.error('llamarClaudeConMemoria error:', e);
+    return llamarClaude(userMessage, extraCtx);
+  }
+}
+
 // === DETECCIÓN DE KEYWORDS EN JOURNAL ===
 
 async function detectarYRegistrar(chatId, texto) {
@@ -239,7 +321,7 @@ function menuKeyboard() {
       [{ text: '✅ Registrar avance', callback_data: 'cmd_avance' }, { text: '💪 Acciones de hoy', callback_data: 'cmd_acciones' }],
       [{ text: '💸 Registrar gasto', callback_data: 'cmd_gasto' }, { text: '🛒 Lista del súper', callback_data: 'cmd_super' }],
       [{ text: '📋 Agregar tarea', callback_data: 'cmd_tarea' }, { text: '😮‍💨 Cómo estoy', callback_data: 'cmd_como' }],
-      [{ text: '📊 Mi progreso semanal', callback_data: 'cmd_progreso' }],
+      [{ text: '🧠 Mis datos guardados', callback_data: 'cmd_datos' }, { text: '📊 Mi progreso', callback_data: 'cmd_progreso' }],
     ],
   };
 }
@@ -411,6 +493,40 @@ async function iniciarPendiente(chatId) {
 }
 bot.onText(/\/pendiente/, (msg) => iniciarPendiente(msg.chat.id));
 
+// --- DATOS IMPORTANTES (MEMORIA) ---
+
+async function mostrarDatos(chatId) {
+  try {
+    const datos = await getDatosImportantes();
+    if (datos.length === 0) {
+      await bot.sendMessage(chatId,
+        '🧠 No tienes datos importantes guardados aún.\n\nEscribe *"Dato importante: ..."* o *"Recuerda que: ..."* y lo guardo para siempre.',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+    let texto = '🧠 *Datos importantes guardados:*\n\n';
+    datos.forEach((d, i) => {
+      texto += `${i + 1}. ${d.texto}\n_${d.fecha}_\n\n`;
+    });
+
+    const botones = datos.map(d => [{
+      text: `🗑 ${d.texto.slice(0, 35)}${d.texto.length > 35 ? '...' : ''}`,
+      callback_data: `borrar_dato_${d.id}`
+    }]);
+    botones.push([{ text: '← Menú', callback_data: 'cmd_menu' }]);
+
+    await bot.sendMessage(chatId, texto, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: botones }
+    });
+  } catch (e) {
+    await bot.sendMessage(chatId, 'Error cargando datos.');
+    console.error(e);
+  }
+}
+bot.onText(/\/datos/, (msg) => mostrarDatos(msg.chat.id));
+
 // --- RECETAS ---
 
 async function generarRecetas(chatId) {
@@ -505,6 +621,13 @@ bot.on('callback_query', async (query) => {
     await iniciarGasto(chatId);
   } else if (data === 'cmd_tarea') {
     await iniciarTarea(chatId);
+  } else if (data === 'cmd_datos') {
+    await mostrarDatos(chatId);
+  } else if (data.startsWith('borrar_dato_')) {
+    const datoId = data.replace('borrar_dato_', '');
+    await borrarDatoImportante(datoId);
+    await bot.sendMessage(chatId, '✓ Dato borrado.');
+    await mostrarDatos(chatId);
 
   // METAS
   } else if (data.startsWith('ver_meta_')) {
@@ -623,10 +746,12 @@ bot.on('message', async (msg) => {
     if (estado.modo === 'journal') {
       const detectados = await detectarYRegistrar(chatId, texto);
       await guardarAvance('journal', texto, 'journal');
+      await guardarMensajeConversacion('user', texto);
       const extraCtx = /mamá|mama/i.test(texto)
         ? 'Mencionó a su mamá. Responde con empatía real, reconoce lo que implica cuidarla. Sin sonar como psicólogo.'
         : '';
-      const respuesta = await llamarClaude(texto, extraCtx);
+      const respuesta = await llamarClaudeConMemoria(texto, extraCtx);
+      await guardarMensajeConversacion('assistant', respuesta);
       let mensajeFinal = respuesta;
       if (detectados.length > 0) mensajeFinal += `\n\n_${detectados.join(' · ')}_`;
       await bot.sendMessage(chatId, mensajeFinal, { parse_mode: 'Markdown' });
@@ -701,6 +826,18 @@ bot.on('message', async (msg) => {
       return;
     }
 
+    // AUTO-DETECCIÓN: dato importante
+    const matchDato = texto.match(/^(?:dato importante|recuerda que)[:：]\s*(.+)/i);
+    if (matchDato) {
+      const datoTexto = matchDato[1].trim();
+      await guardarDatoImportante(datoTexto);
+      await bot.sendMessage(chatId,
+        `✅ Guardado en mi memoria:\n"${datoTexto}"\n\n_Lo voy a recordar siempre._`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
     // AUTO-DETECCIÓN: gasto en texto libre
     const gastoVerbo = /gast[eé]|pagu[eé]|cost[oó]|compr[eé]|pagamos|salió/i.test(texto);
     const gastoMatch = texto.match(/\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:pesos?|mxn)/i);
@@ -719,12 +856,10 @@ bot.on('message', async (msg) => {
       return;
     }
 
-    // Mensaje libre — Claude con contexto
-    const recientes = await getAvancesRecientes(5);
-    const contexto = recientes.length > 0
-      ? `Últimas entradas de Fernanda: ${recientes.map(a => a.texto.slice(0, 80)).join(' | ')}`
-      : '';
-    const respuesta = await llamarClaude(texto, contexto);
+    // Mensaje libre — Claude con memoria completa
+    await guardarMensajeConversacion('user', texto);
+    const respuesta = await llamarClaudeConMemoria(texto);
+    await guardarMensajeConversacion('assistant', respuesta);
     await bot.sendMessage(chatId, respuesta);
 
   } catch (e) {
