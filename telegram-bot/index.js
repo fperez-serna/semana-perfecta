@@ -53,6 +53,16 @@ Sobre ella:
 - Su mayor reto es el scroll de redes sociales — no lo menciones tú primero.
 - Bloques de trabajo: 9-10:30am profundo (lun/mar/jue), mié y vie empieza a las 10am.
 
+Lo que SÍ puedes hacer (tienes acceso real a su Weekly Planner y Firebase):
+- Ver y agregar tareas a su semana en el planner
+- Guardar pendientes en su lista de pendientes
+- Registrar gastos en su presupuesto
+- Ver y agregar items a su lista del súper
+- Guardar avances en sus 13 metas
+- Recordar datos importantes que ella te diga
+
+Cuando ella pida algo de esto, confirma que lo hiciste — porque el bot ya lo ejecuta automáticamente. Nunca digas que no tienes acceso a su planner, porque sí lo tienes.
+
 Tu estilo:
 - Directo, cálido, real. Sin sermones ni listas de 5 puntos.
 - Respondes a lo que dijo, no a lo que podrías preguntar.
@@ -845,6 +855,26 @@ bot.on('message', async (msg) => {
       const montoStr = (gastoMatch[1] || gastoMatch[2]).replace(',', '.');
       const monto = parseFloat(montoStr);
       await iniciarGasto(chatId, monto);
+      return;
+    }
+
+    // AUTO-DETECCIÓN: agregar tarea explícita
+    const matchTarea = texto.match(/^(?:agrega(?:r)?|añade?|pon|mete)\s+(?:(?:esto?|eso|la tarea|una tarea)\s+)?(?:a\s+)?(?:mis\s+tareas?|el\s+planner|mi\s+semana)[:\s]+(.+)/i)
+      || texto.match(/^tarea[:\s]+(.+)/i);
+    if (matchTarea) {
+      const tareaTexto = matchTarea[1].trim();
+      await agregarTareaWP(tareaTexto);
+      await bot.sendMessage(chatId, `✅ Tarea agregada a tu semana:\n"${tareaTexto}"`);
+      return;
+    }
+
+    // AUTO-DETECCIÓN: agregar pendiente explícita
+    const matchPendiente = texto.match(/^(?:agrega(?:r)?|añade?|pon|mete|guarda)\s+(?:(?:esto?|eso|el\s+pendiente|un\s+pendiente)\s+)?(?:a\s+)?(?:mis\s+pendientes?|mi\s+lista)[:\s]+(.+)/i)
+      || texto.match(/^pendiente[:\s]+(.+)/i);
+    if (matchPendiente) {
+      const pendTexto = matchPendiente[1].trim();
+      await agregarPendienteWP(pendTexto);
+      await bot.sendMessage(chatId, `📌 Pendiente guardado:\n"${pendTexto}"`);
       return;
     }
 
