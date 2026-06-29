@@ -6,7 +6,7 @@ const admin = require('firebase-admin');
 const cron = require('node-cron');
 const METAS = require('./metas');
 
-// === FIREBASE ADMIN ===
+// === FIREBASE — SEMANA PERFECTA ===
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -16,13 +16,27 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
+// === FIREBASE — WEEKLY PLANNER ===
+const wpApp = admin.initializeApp({
+  credential: admin.credential.cert({
+    projectId: process.env.WP_FIREBASE_PROJECT_ID,
+    clientEmail: process.env.WP_FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.WP_FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  }),
+}, 'weekly-planner');
+const wpDb = wpApp.firestore();
+
+const FERNANDA_UID = process.env.FERNANDA_UID;
+const FERNANDA_CHAT_ID = process.env.FERNANDA_CHAT_ID;
+
+function wpUser() {
+  return wpDb.collection('users').doc(FERNANDA_UID).collection('data');
+}
+
 // === CLIENTES ===
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
-const FERNANDA_CHAT_ID = process.env.FERNANDA_CHAT_ID;
-
-// Estado de flujos multi-paso por chat
 const userState = {};
 
 // === SISTEMA DE PERSONALIDAD ===
@@ -30,15 +44,14 @@ const SYSTEM_PROMPT = `Eres el asistente personal de Fernanda. La conoces bien.
 
 Sobre ella:
 - Vive en Mérida, México. Se despierta entre 4-5am.
-- Entrena: tennis mar/jue 5am, natación mar/jue 8am, gym lun 6am. También pilates, barre, apnea, escalar, patinar y correr de vez en cuando.
+- Entrena: tennis mar/jue 5am, natación mar/jue 8am, gym lun 6am. También pilates, barre, apnea, escalar, patinar y correr.
 - Animales: caballo Atlas (2 años), perro Rogelio, víbora Sombra, gato Benito.
 - Está lanzando https://app.myweeklyplanner.app — faltan bugs y estrategia de marketing.
-- Acaba de terminar un bot de WhatsApp para un cliente llamado Moisés, sin cobrar, fue entrenamiento y le gustó mucho.
 - Aprende AI, automatizaciones y vibe coding.
-- Tiene deuda de $312,000 pesos en tarjetas, pagándola activamente.
+- Tiene deuda de tarjetas, pagándola activamente.
 - Cuida a su mamá con discapacidad. Viven de los ingresos de su mamá por ahora.
-- Su mayor reto es el scroll de redes sociales — pero no lo menciones tú primero, espera a que ella lo traiga.
-- Bloques de trabajo: 9-10:30am trabajo profundo (lun/mar/jue), miércoles y viernes empieza a las 10am. 10:30-11am quehacer sin cel. 11am-12:30pm AI/clientes.
+- Su mayor reto es el scroll de redes sociales — no lo menciones tú primero.
+- Bloques de trabajo: 9-10:30am profundo (lun/mar/jue), mié y vie empieza a las 10am.
 
 Tu estilo:
 - Directo, cálido, real. Sin sermones ni listas de 5 puntos.
@@ -48,48 +61,132 @@ Tu estilo:
 - Español mexicano natural, algo de inglés, alguna palabra en francés de vez en cuando.
 - Máximo 2-3 párrafos cortos. Menos es más.`;
 
-// === HELPERS FIRESTORE ===
+// === HELPERS — SEMANA PERFECTA ===
 
 async function guardarAvance(metaId, texto, tipo = 'avance') {
   const ahora = new Date();
-  const fecha = `${ahora.getDate()}/${ahora.getMonth() + 1}/${ahora.getFullYear()}`;
+  const fecha = ahora.toLocaleDateString('es-MX');
   const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   await db.collection('avances').add({
-    metaId,
-    texto,
+    metaId, texto,
     fecha: `${fecha} ${hora}`,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    tipo,
-    fuente: 'telegram',
+    tipo, fuente: 'telegram',
   });
 }
 
 async function getAvancesRecientes(limite = 10) {
   const snap = await db.collection('avances')
-    .orderBy('timestamp', 'desc')
-    .limit(limite)
-    .get();
+    .orderBy('timestamp', 'desc').limit(limite).get();
   return snap.docs.map(d => d.data());
 }
 
-async function getProgresoMeta(metaId) {
-  const doc = await db.collection('progreso').doc(metaId).get();
-  return doc.exists ? doc.data() : {};
+// === HELPERS — WEEKLY PLANNER ===
+
+const SHOP_CATS = ['Supermercado', 'Casa', 'Personal', 'Oficina'];
+
+function getWeekId() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(today);
+  monday.setDate(diff);
+  return 'week_' + monday.toISOString().split('T')[0];
 }
 
-async function getListaSuper() {
-  const snap = await db.collection('lista_super')
-    .orderBy('timestamp', 'desc')
-    .get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+function getBudgetDocId() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `budget_actual_${now.getFullYear()}_${month}`;
+}
+
+function jsToWpDay(jsDay) {
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+async function getTareasHoy() {
+  try {
+    const weekId = getWeekId();
+    const doc = await wpUser().doc(weekId).get();
+    if (!doc.exists) return [];
+    const data = doc.data();
+    const wpDay = jsToWpDay(new Date().getDay());
+
+    const tareas = [];
+    const focus = data.focus?.[wpDay] || {};
+    Object.values(focus).forEach(t => { if (t && t.trim()) tareas.push(t.trim()); });
+
+    const tasks = (data.tasks || []).filter(t => !t.deleted && t.deletedOnDay === undefined);
+    tasks.forEach(t => { if (t.text) tareas.push(t.text); });
+
+    return tareas;
+  } catch (e) {
+    console.error('getTareasHoy error:', e);
+    return [];
+  }
+}
+
+async function agregarTareaWP(texto) {
+  const weekId = getWeekId();
+  const wpDay = jsToWpDay(new Date().getDay());
+  await wpUser().doc(weekId).set({
+    tasks: admin.firestore.FieldValue.arrayUnion({
+      id: 't' + Date.now(),
+      text: texto,
+      addedOnDay: wpDay,
+    })
+  }, { merge: true });
+}
+
+async function agregarPendienteWP(texto) {
+  const fecha = new Date().toISOString().split('T')[0];
+  const id = 't' + Date.now();
+  const doc = await wpUser().doc('pending_tasks').get();
+  const tasks = doc.exists ? (doc.data().tasks || []) : [];
+  tasks.push({ id, text: texto, addedDate: fecha });
+  await wpUser().doc('pending_tasks').set({ tasks });
+}
+
+async function getListaSuperWP() {
+  const doc = await wpUser().doc('shopping').get();
+  if (!doc.exists) return {};
+  return doc.data().cats || {};
+}
+
+async function agregarItemSuperWP(item, catIndex) {
+  const field = `cats.cat${catIndex}`;
+  try {
+    await wpUser().doc('shopping').update({
+      [field]: admin.firestore.FieldValue.arrayUnion({ text: item, done: false })
+    });
+  } catch {
+    const cats = { cat0: [], cat1: [], cat2: [], cat3: [] };
+    cats[`cat${catIndex}`] = [{ text: item, done: false }];
+    await wpUser().doc('shopping').set({ cats });
+  }
+}
+
+async function getBudgetConfig() {
+  const doc = await wpUser().doc('budget_config').get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function registrarGasto(groupId, subId, monto) {
+  const key = `${groupId}_${subId}`;
+  await wpUser().doc(getBudgetDocId()).set(
+    { [key]: admin.firestore.FieldValue.increment(monto) },
+    { merge: true }
+  );
 }
 
 // === CLAUDE API ===
 
 async function llamarClaude(userMessage, contextoExtra = '') {
-  const systemFinal = contextoExtra ? `${SYSTEM_PROMPT}\n\nContexto adicional:\n${contextoExtra}` : SYSTEM_PROMPT;
+  const systemFinal = contextoExtra
+    ? `${SYSTEM_PROMPT}\n\nContexto adicional:\n${contextoExtra}`
+    : SYSTEM_PROMPT;
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-6',
     max_tokens: 600,
     system: systemFinal,
     messages: [{ role: 'user', content: userMessage }],
@@ -102,41 +199,32 @@ async function llamarClaude(userMessage, contextoExtra = '') {
 async function detectarYRegistrar(chatId, texto) {
   const lower = texto.toLowerCase();
   const ahora = new Date();
-  const fecha = `${ahora.getDate()}/${ahora.getMonth() + 1}/${ahora.getFullYear()}`;
+  const fecha = ahora.toLocaleDateString('es-MX');
   const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   const ts = admin.firestore.FieldValue.serverTimestamp();
-
   const acciones = [];
 
-  // Entrenamiento
   const entrenamientos = ['tennis', 'tenis', 'natación', 'nadar', 'gym', 'gimnasio', 'pilates', 'equitación', 'caballo', 'atlas'];
-  const tipoEntrenamiento = entrenamientos.find(k => lower.includes(k));
-  if (tipoEntrenamiento) {
-    await db.collection('entrenamientos').add({ tipo: tipoEntrenamiento, fecha, hora, nota: texto, timestamp: ts });
+  const tipoEnt = entrenamientos.find(k => lower.includes(k));
+  if (tipoEnt) {
+    await db.collection('entrenamientos').add({ tipo: tipoEnt, fecha, hora, nota: texto, timestamp: ts });
     acciones.push('entrenamiento registrado ✓');
     if (lower.includes('atlas') || lower.includes('caballo')) {
       await guardarAvance('granja', texto, 'visita_atlas');
-      acciones.push('visita a Atlas guardada en meta Granja ✓');
+      acciones.push('visita a Atlas guardada ✓');
     }
   }
 
-  // Consciencia con el celular / redes
-  const redesKeywords = ['instagram', 'tiktok', 'redes', 'scroll', 'cel ', 'celular', 'twitter', 'x.com'];
-  if (redesKeywords.some(k => lower.includes(k))) {
+  const redesKw = ['instagram', 'tiktok', 'redes', 'scroll', 'celular', 'twitter'];
+  if (redesKw.some(k => lower.includes(k))) {
     await db.collection('consciencia').add({ texto, fecha, hora, timestamp: ts });
     acciones.push('momento de consciencia registrado ✓');
   }
 
-  // Tecnología / app
-  const techKeywords = ['bug', 'app', 'planner', 'código', 'deploy', 'programé', 'programar', 'vibe coding', 'automatización'];
-  if (techKeywords.some(k => lower.includes(k))) {
+  const techKw = ['bug', 'app', 'planner', 'código', 'deploy', 'programé', 'vibe coding', 'automatización'];
+  if (techKw.some(k => lower.includes(k))) {
     await guardarAvance('tecnologia', texto, 'journal');
-    acciones.push('avance en meta Tecnología registrado ✓');
-  }
-
-  // Sombra (víbora)
-  if (lower.includes('sombra')) {
-    acciones.push('¡Le prestaste atención a Sombra! 🐍');
+    acciones.push('avance en meta Tecnología ✓');
   }
 
   return acciones;
@@ -149,195 +237,209 @@ function menuKeyboard() {
     inline_keyboard: [
       [{ text: '📓 Journal', callback_data: 'cmd_journal' }, { text: '🎯 Mis metas', callback_data: 'cmd_metas' }],
       [{ text: '✅ Registrar avance', callback_data: 'cmd_avance' }, { text: '💪 Acciones de hoy', callback_data: 'cmd_acciones' }],
-      [{ text: '🛒 Lista del súper', callback_data: 'cmd_super' }, { text: '🍳 Recetas sanas', callback_data: 'cmd_recetas' }],
-      [{ text: '😮‍💨 Cómo estoy', callback_data: 'cmd_como' }, { text: '📊 Mi progreso semanal', callback_data: 'cmd_progreso' }],
+      [{ text: '💸 Registrar gasto', callback_data: 'cmd_gasto' }, { text: '🛒 Lista del súper', callback_data: 'cmd_super' }],
+      [{ text: '📋 Agregar tarea', callback_data: 'cmd_tarea' }, { text: '😮‍💨 Cómo estoy', callback_data: 'cmd_como' }],
+      [{ text: '📊 Mi progreso semanal', callback_data: 'cmd_progreso' }],
     ],
   };
 }
 
-// === COMANDO /start ===
+// === COMANDOS ===
 
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
-  console.log('Chat ID de Fernanda:', chatId);
-
+  console.log('Chat ID:', chatId);
   await bot.sendMessage(chatId,
-    `Hola Fer 👋\n\nSoy tu asistente personal. Te ayudo a registrar avances, escribir en tu journal, generar acciones del día y más — todo conectado a tu Semana Perfecta.\n\nTu Chat ID es: \`${chatId}\` (guárdalo en las variables de entorno del bot como FERNANDA_CHAT_ID)\n\n¿Qué hacemos?`,
+    `Hola Fer 👋\n\nEstoy conectado a tu Weekly Planner, tus metas y tu presupuesto.\n\nTu Chat ID: \`${chatId}\``,
     { parse_mode: 'Markdown', reply_markup: menuKeyboard() }
   );
 });
-
-// === COMANDO /menu ===
 
 bot.onText(/\/menu/, async (msg) => {
   await bot.sendMessage(msg.chat.id, '¿Qué hacemos?', { reply_markup: menuKeyboard() });
 });
 
-// === COMANDO /journal ===
-
 async function iniciarJournal(chatId) {
   userState[chatId] = { modo: 'journal' };
-  await bot.sendMessage(chatId,
-    '📓 Modo journal activado. Escribe lo que quieras — cómo vas, qué piensas, cómo te sientes. Yo escucho y respondo.\n\nEscribe /menu cuando quieras salir.'
-  );
+  await bot.sendMessage(chatId, '📓 Modo journal. Escribe lo que quieras — lo que piensas, cómo te sientes, qué pasó. Escribe /menu para salir.');
 }
-
 bot.onText(/\/journal/, (msg) => iniciarJournal(msg.chat.id));
-
-// === COMANDO /metas ===
 
 async function mostrarMetas(chatId) {
   const botones = METAS.map(m => [{ text: m.nombre, callback_data: `ver_meta_${m.id}` }]);
   botones.push([{ text: '← Menú', callback_data: 'cmd_menu' }]);
-  await bot.sendMessage(chatId, '🎯 *Tus 13 metas mayores:*', {
+  await bot.sendMessage(chatId, '🎯 *Tus 13 metas:*', {
     parse_mode: 'Markdown',
     reply_markup: { inline_keyboard: botones },
   });
 }
-
 bot.onText(/\/metas/, (msg) => mostrarMetas(msg.chat.id));
-
-// === COMANDO /avance ===
 
 async function iniciarAvance(chatId) {
   const botones = METAS.map(m => [{ text: m.nombre, callback_data: `avance_meta_${m.id}` }]);
   botones.push([{ text: '← Cancelar', callback_data: 'cmd_menu' }]);
   userState[chatId] = { modo: 'avance_eligiendo_meta' };
-  await bot.sendMessage(chatId, '✅ ¿Para cuál meta registras el avance?', {
-    reply_markup: { inline_keyboard: botones },
-  });
+  await bot.sendMessage(chatId, '✅ ¿Para cuál meta?', { reply_markup: { inline_keyboard: botones } });
 }
-
 bot.onText(/\/avance/, (msg) => iniciarAvance(msg.chat.id));
 
-// === COMANDO /acciones ===
-
 async function generarAcciones(chatId) {
-  await bot.sendMessage(chatId, '💪 Generando tus acciones de hoy...');
+  await bot.sendMessage(chatId, '💪 Generando acciones...');
   try {
     const hoy = new Date();
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaHoy = dias[hoy.getDay()];
-
-    // Entrenamiento de hoy
     const entrenamientosHoy = {
-      'Lunes': 'gym 6am',
-      'Martes': 'tennis 5am, natación 8am, equitación 4:30pm',
-      'Jueves': 'tennis 5am, natación 8am, equitación 4:30pm',
+      Lunes: 'gym 6am',
+      Martes: 'tennis 5am, natación 8am, equitación 4:30pm',
+      Jueves: 'tennis 5am, natación 8am, equitación 4:30pm',
     };
     const entHoy = entrenamientosHoy[diaHoy] || 'sin entrenamiento programado';
-
-    // Últimos avances
+    const tareas = await getTareasHoy();
     const recientes = await getAvancesRecientes(5);
     const resumenRecientes = recientes.map(a => `- [${a.metaId}]: ${a.texto}`).join('\n') || 'Sin avances recientes.';
 
-    const prompt = `Es ${diaHoy}. El entrenamiento de hoy fue: ${entHoy}.
+    const prompt = `Es ${diaHoy}. Entrenamiento de hoy: ${entHoy}.
+Tareas en el planner hoy: ${tareas.join(', ') || 'ninguna registrada'}.
+Últimos avances en metas: ${resumenRecientes}
 
-Últimos avances registrados:
-${resumenRecientes}
+Dame 3 acciones concretas y realizables HOY para avanzar en las metas. Considera el día y lo que ya tiene planeado.
 
-Dame 3 acciones concretas, gratuitas y realizables HOY para avanzar en las metas que más lo necesiten. Considera el día y lo que ya hice.
-
-Formato de respuesta (solo esto, sin texto adicional):
+Formato (solo esto):
 1. [Meta]: acción específica
 2. [Meta]: acción específica
 3. [Meta]: acción específica`;
 
     const respuesta = await llamarClaude(prompt);
-    await bot.sendMessage(chatId, `💪 *Tus acciones de hoy — ${diaHoy}:*\n\n${respuesta}`, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, `💪 *Acciones de hoy — ${diaHoy}:*\n\n${respuesta}`, { parse_mode: 'Markdown' });
   } catch (e) {
-    await bot.sendMessage(chatId, 'Error generando acciones. Intenta de nuevo.');
+    await bot.sendMessage(chatId, 'Error generando acciones.');
+    console.error(e);
+  }
+}
+bot.onText(/\/acciones/, (msg) => generarAcciones(msg.chat.id));
+
+// --- GASTOS ---
+
+async function iniciarGasto(chatId, montoDetectado = null) {
+  try {
+    const config = await getBudgetConfig();
+    const grupos = (config?.groups || []).filter(g => g.subs?.length > 0);
+    userState[chatId] = { modo: 'gasto_eligiendo_grupo', monto: montoDetectado, grupos };
+    const botones = grupos.map((g, i) => [{ text: g.name, callback_data: `gastog_${i}` }]);
+    botones.push([{ text: '← Cancelar', callback_data: 'cmd_menu' }]);
+    const montoTexto = montoDetectado ? ` de $${montoDetectado.toLocaleString('es-MX')}` : '';
+    await bot.sendMessage(chatId, `💸 Gasto${montoTexto}\n\n¿En qué área?`, {
+      reply_markup: { inline_keyboard: botones }
+    });
+  } catch (e) {
+    await bot.sendMessage(chatId, 'Error cargando categorías.');
     console.error(e);
   }
 }
 
-bot.onText(/\/acciones/, (msg) => generarAcciones(msg.chat.id));
+async function confirmarGasto(chatId, grupo, sub, monto) {
+  await registrarGasto(grupo.id, sub.id, monto);
+  userState[chatId] = null;
+  await bot.sendMessage(chatId,
+    `✅ Guardado\n💸 *$${monto.toLocaleString('es-MX')}* en ${grupo.name} → ${sub.name}`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[
+        { text: '+ Otro gasto', callback_data: 'cmd_gasto' },
+        { text: '← Menú', callback_data: 'cmd_menu' }
+      ]]}
+    }
+  );
+}
 
-// === COMANDO /super ===
+bot.onText(/\/gasto/, (msg) => iniciarGasto(msg.chat.id));
+
+// --- SÚPER ---
 
 async function mostrarSuper(chatId) {
-  userState[chatId] = { modo: 'super' };
   try {
-    const lista = await getListaSuper();
-    const pendientes = lista.filter(i => !i.comprado);
-    const comprados = lista.filter(i => i.comprado);
-
+    const cats = await getListaSuperWP();
     let texto = '🛒 *Lista del súper*\n\n';
-    if (pendientes.length === 0) {
-      texto += '_Lista vacía_\n';
-    } else {
-      texto += pendientes.map(i => `☐ ${i.item}`).join('\n') + '\n';
-    }
-    if (comprados.length > 0) {
-      texto += `\n✓ Comprados: ${comprados.map(i => i.item).join(', ')}`;
-    }
+    let totalItems = 0;
 
-    const botones = [
-      [{ text: '+ Agregar item', callback_data: 'super_agregar' }],
-      [{ text: '✓ Marcar comprados', callback_data: 'super_marcar' }],
-      [{ text: '🍳 Generar desde receta', callback_data: 'super_receta' }],
-      [{ text: '🗑 Limpiar comprados', callback_data: 'super_limpiar' }],
-      [{ text: '← Menú', callback_data: 'cmd_menu' }],
-    ];
+    SHOP_CATS.forEach((nombre, i) => {
+      const items = (cats[`cat${i}`] || []).filter(it => !it.done);
+      if (items.length > 0) {
+        texto += `*${nombre}:*\n`;
+        texto += items.map(it => `☐ ${it.text}`).join('\n') + '\n\n';
+        totalItems += items.length;
+      }
+    });
+
+    if (totalItems === 0) texto += '_Lista vacía_ 🎉\n';
 
     await bot.sendMessage(chatId, texto, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: botones },
+      reply_markup: { inline_keyboard: [
+        [{ text: '+ Agregar item', callback_data: 'super_elegir_cat' }],
+        [{ text: '✓ Marcar comprado', callback_data: 'super_marcar_menu' }],
+        [{ text: '← Menú', callback_data: 'cmd_menu' }],
+      ]}
     });
   } catch (e) {
     await bot.sendMessage(chatId, 'Error cargando lista.');
     console.error(e);
   }
 }
-
 bot.onText(/\/super/, (msg) => mostrarSuper(msg.chat.id));
 
-// === COMANDO /recetas ===
+async function mostrarCatsSuper(chatId) {
+  const botones = SHOP_CATS.map((cat, i) => [{ text: cat, callback_data: `super_cat_${i}` }]);
+  botones.push([{ text: '← Lista', callback_data: 'cmd_super' }]);
+  await bot.sendMessage(chatId, '¿A qué categoría?', { reply_markup: { inline_keyboard: botones } });
+}
+
+// --- TAREA ---
+
+async function iniciarTarea(chatId) {
+  userState[chatId] = { modo: 'tarea_escribiendo' };
+  await bot.sendMessage(chatId, '📋 ¿Qué tarea agregamos a tu semana?');
+}
+bot.onText(/\/tarea/, (msg) => iniciarTarea(msg.chat.id));
+
+// --- PENDIENTE ---
+
+async function iniciarPendiente(chatId) {
+  userState[chatId] = { modo: 'pendiente_escribiendo' };
+  await bot.sendMessage(chatId, '📌 ¿Qué pendiente agregamos?');
+}
+bot.onText(/\/pendiente/, (msg) => iniciarPendiente(msg.chat.id));
+
+// --- RECETAS ---
 
 async function generarRecetas(chatId) {
   await bot.sendMessage(chatId, '🍳 Generando recetas...');
   try {
-    const prompt = `Genera 3 recetas sanas, altas en proteína, fáciles de preparar con ingredientes disponibles en Mérida, México.
-
-Para cada receta:
-- Nombre
-- Ingredientes principales (breve)
-- Tiempo aproximado
-- Por qué es buena para alguien que entrena intenso
-
-Formato limpio, sin markdown excesivo. Español mexicano natural.`;
-
+    const prompt = `Genera 3 recetas sanas, altas en proteína, fáciles con ingredientes de Mérida, México.
+Para cada una: nombre, ingredientes principales, tiempo, y por qué es buena para alguien que entrena fuerte.
+Formato limpio, español mexicano natural.`;
     const respuesta = await llamarClaude(prompt);
-    const botones = [
-      [{ text: '🛒 Agregar ingredientes al súper', callback_data: 'receta_a_super' }],
-      [{ text: '← Menú', callback_data: 'cmd_menu' }],
-    ];
-
     userState[chatId] = { modo: 'receta_lista', ultimaReceta: respuesta };
-    await bot.sendMessage(chatId, `🍳 *Recetas para esta semana:*\n\n${respuesta}`, {
+    await bot.sendMessage(chatId, `🍳 *Recetas:*\n\n${respuesta}`, {
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: botones },
+      reply_markup: { inline_keyboard: [
+        [{ text: '🛒 Agregar ingredientes al súper', callback_data: 'receta_a_super' }],
+        [{ text: '← Menú', callback_data: 'cmd_menu' }],
+      ]}
     });
   } catch (e) {
     await bot.sendMessage(chatId, 'Error generando recetas.');
     console.error(e);
   }
 }
-
 bot.onText(/\/recetas/, (msg) => generarRecetas(msg.chat.id));
-
-// === COMANDO /como ===
 
 async function checkinEmocional(chatId) {
   userState[chatId] = { modo: 'como' };
-  await bot.sendMessage(chatId,
-    '😮‍💨 ¿Cómo estás ahorita, en serio? No tienes que poner bien. Escribe lo que es.'
-  );
+  await bot.sendMessage(chatId, '😮‍💨 ¿Cómo estás ahorita, en serio? Escribe lo que es.');
 }
-
 bot.onText(/\/como/, (msg) => checkinEmocional(msg.chat.id));
-
-// === COMANDO /progreso ===
 
 async function mostrarProgreso(chatId) {
   await bot.sendMessage(chatId, '📊 Analizando tu semana...');
@@ -347,41 +449,39 @@ async function mostrarProgreso(chatId) {
     inicioSemana.setDate(ahora.getDate() - ahora.getDay());
     inicioSemana.setHours(0, 0, 0, 0);
 
-    const [avancesSnap, entSnap, conSnap] = await Promise.all([
+    const [avancesSnap, entSnap] = await Promise.all([
       db.collection('avances').where('timestamp', '>=', inicioSemana).orderBy('timestamp', 'desc').get(),
       db.collection('entrenamientos').where('timestamp', '>=', inicioSemana).get(),
-      db.collection('consciencia').where('timestamp', '>=', inicioSemana).get(),
     ]);
 
     const avances = avancesSnap.docs.map(d => d.data());
     const entrenamientos = entSnap.docs.map(d => d.data());
-    const momentos = conSnap.docs.map(d => d.data());
+    const tareas = await getTareasHoy();
 
     const resumen = `Esta semana:
-- Avances registrados: ${avances.length} (${[...new Set(avances.map(a => a.metaId))].length} metas distintas)
-- Entrenamientos: ${entrenamientos.length}
-- Momentos de consciencia con el celular: ${momentos.length}
+- Avances en metas: ${avances.length} (${[...new Set(avances.map(a => a.metaId))].length} metas distintas)
+- Entrenamientos registrados: ${entrenamientos.length}
+- En el planner esta semana: ${tareas.join(', ') || 'sin tareas registradas'}
+Detalle avances: ${avances.slice(0, 5).map(a => `[${a.metaId}] ${a.texto.slice(0, 60)}`).join(' | ')}`;
 
-Avances: ${avances.slice(0, 5).map(a => `[${a.metaId}] ${a.texto.slice(0, 60)}`).join(' | ')}`;
-
-    const prompt = `Genera un resumen motivador pero real de la semana de Fernanda. Usa estos datos:\n\n${resumen}\n\nCierra con una frase específica y personal, no genérica.`;
-    const respuesta = await llamarClaude(prompt);
-
+    const respuesta = await llamarClaude(
+      `Genera un resumen motivador pero real de la semana de Fernanda.\n\n${resumen}\n\nCierra con algo específico y personal, no genérico.`
+    );
     await bot.sendMessage(chatId, `📊 *Tu semana:*\n\n${respuesta}`, { parse_mode: 'Markdown' });
   } catch (e) {
     await bot.sendMessage(chatId, 'Error generando progreso.');
     console.error(e);
   }
 }
-
 bot.onText(/\/progreso/, (msg) => mostrarProgreso(msg.chat.id));
 
-// === CALLBACK QUERIES (botones inline) ===
+// === CALLBACK QUERIES ===
 
 bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
   await bot.answerCallbackQuery(query.id);
+  const estado = userState[chatId] || {};
 
   if (data === 'cmd_menu') {
     await bot.sendMessage(chatId, '¿Qué hacemos?', { reply_markup: menuKeyboard() });
@@ -401,75 +501,112 @@ bot.on('callback_query', async (query) => {
     await checkinEmocional(chatId);
   } else if (data === 'cmd_progreso') {
     await mostrarProgreso(chatId);
+  } else if (data === 'cmd_gasto') {
+    await iniciarGasto(chatId);
+  } else if (data === 'cmd_tarea') {
+    await iniciarTarea(chatId);
 
-  // Ver detalle de una meta
+  // METAS
   } else if (data.startsWith('ver_meta_')) {
     const metaId = data.replace('ver_meta_', '');
     const meta = METAS.find(m => m.id === metaId);
     if (!meta) return;
     const nota = await db.collection('notas_metas').doc(metaId).get();
     const textoNota = nota.exists ? nota.data().texto : 'Sin nota registrada aún.';
-    await bot.sendMessage(chatId,
-      `🎯 *${meta.nombre}*\n\n📍 Dónde estás hoy:\n${textoNota}`,
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '✅ Registrar avance aquí', callback_data: `avance_meta_${metaId}` }],
-            [{ text: '← Mis metas', callback_data: 'cmd_metas' }],
-          ],
-        },
-      }
-    );
-
-  // Elegir meta para avance
+    await bot.sendMessage(chatId, `🎯 *${meta.nombre}*\n\n${textoNota}`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [
+        [{ text: '✅ Registrar avance', callback_data: `avance_meta_${metaId}` }],
+        [{ text: '← Mis metas', callback_data: 'cmd_metas' }],
+      ]},
+    });
   } else if (data.startsWith('avance_meta_')) {
     const metaId = data.replace('avance_meta_', '');
     const meta = METAS.find(m => m.id === metaId);
     userState[chatId] = { modo: 'avance_escribiendo', metaId, metaNombre: meta?.nombre };
-    await bot.sendMessage(chatId, `✅ *${meta?.nombre}*\n\n¿Qué hiciste hoy hacia esta meta?`, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, `✅ *${meta?.nombre}*\n\n¿Qué hiciste hacia esta meta?`, { parse_mode: 'Markdown' });
 
-  // Súper
-  } else if (data === 'super_agregar') {
-    userState[chatId] = { modo: 'super_agregar' };
-    await bot.sendMessage(chatId, '¿Qué agregas? Escribe un item o varios separados por coma.');
-  } else if (data === 'super_limpiar') {
-    const lista = await getListaSuper();
-    const comprados = lista.filter(i => i.comprado);
-    for (const item of comprados) {
-      await db.collection('lista_super').doc(item.id).delete();
+  // GASTOS
+  } else if (data.startsWith('gastog_')) {
+    const idx = parseInt(data.replace('gastog_', ''));
+    const grupo = estado.grupos?.[idx];
+    if (!grupo) return;
+    userState[chatId] = { ...estado, modo: 'gasto_eligiendo_sub', grupo };
+    const botones = grupo.subs.map((s, i) => [{ text: s.name, callback_data: `gastos_${i}` }]);
+    botones.push([{ text: '← Áreas', callback_data: 'cmd_gasto' }]);
+    await bot.sendMessage(chatId, `*${grupo.name}* — ¿Subcategoría?`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: botones }
+    });
+  } else if (data.startsWith('gastos_')) {
+    const idx = parseInt(data.replace('gastos_', ''));
+    const sub = estado.grupo?.subs?.[idx];
+    if (!sub) return;
+    userState[chatId] = { ...estado, modo: 'gasto_esperando_monto', sub };
+    if (estado.monto) {
+      await confirmarGasto(chatId, estado.grupo, sub, estado.monto);
+    } else {
+      await bot.sendMessage(chatId, `${estado.grupo.name} → ${sub.name}\n\n¿Cuánto fue? (solo el número)`);
     }
-    await bot.sendMessage(chatId, `✓ ${comprados.length} items comprados eliminados.`);
-    await mostrarSuper(chatId);
-  } else if (data === 'super_marcar') {
-    const lista = await getListaSuper();
-    const pendientes = lista.filter(i => !i.comprado);
-    if (pendientes.length === 0) {
-      await bot.sendMessage(chatId, 'No hay items pendientes.');
+
+  // SÚPER — agregar
+  } else if (data === 'super_elegir_cat') {
+    await mostrarCatsSuper(chatId);
+  } else if (data.startsWith('super_cat_')) {
+    const catIdx = parseInt(data.replace('super_cat_', ''));
+    userState[chatId] = { modo: 'super_agregar', catIdx };
+    await bot.sendMessage(chatId,
+      `¿Qué agregas a *${SHOP_CATS[catIdx]}*?\n(uno o varios separados por coma)`,
+      { parse_mode: 'Markdown' }
+    );
+
+  // SÚPER — marcar comprado
+  } else if (data === 'super_marcar_menu') {
+    const cats = await getListaSuperWP();
+    const botones = [];
+    SHOP_CATS.forEach((nombre, i) => {
+      (cats[`cat${i}`] || []).filter(it => !it.done).forEach((it, j) => {
+        botones.push([{ text: `${nombre}: ${it.text}`, callback_data: `supermark_${i}_${j}` }]);
+      });
+    });
+    if (botones.length === 0) {
+      await bot.sendMessage(chatId, '¡Lista vacía! 🎉');
       return;
     }
-    const botones = pendientes.map(i => [{ text: `☐ ${i.item}`, callback_data: `marcar_${i.id}` }]);
     botones.push([{ text: '← Lista', callback_data: 'cmd_super' }]);
     await bot.sendMessage(chatId, 'Toca para marcar como comprado:', { reply_markup: { inline_keyboard: botones } });
-  } else if (data.startsWith('marcar_')) {
-    const itemId = data.replace('marcar_', '');
-    await db.collection('lista_super').doc(itemId).update({ comprado: true });
-    await bot.sendMessage(chatId, '✓ Marcado como comprado.');
-  } else if (data === 'super_receta' || data === 'receta_a_super') {
-    const estado = userState[chatId];
+  } else if (data.startsWith('supermark_')) {
+    const parts = data.split('_');
+    const catIdx = parseInt(parts[1]);
+    const itemIdx = parseInt(parts[2]);
+    const catKey = `cat${catIdx}`;
+    const cats = await getListaSuperWP();
+    const items = [...(cats[catKey] || [])];
+    const pendientes = items.filter(it => !it.done);
+    if (pendientes[itemIdx]) {
+      const itemText = pendientes[itemIdx].text;
+      const fullIdx = items.findIndex(it => !it.done && it.text === itemText);
+      if (fullIdx >= 0) {
+        items[fullIdx] = { ...items[fullIdx], done: true };
+        await wpUser().doc('shopping').update({ [`cats.${catKey}`]: items });
+        await bot.sendMessage(chatId, `✓ "${itemText}" comprado 🛍️`);
+      }
+    }
+
+  // RECETA → SÚPER
+  } else if (data === 'receta_a_super') {
     const receta = estado?.ultimaReceta || '';
     if (!receta) {
       await bot.sendMessage(chatId, 'Primero genera una receta con /recetas');
       return;
     }
-    const prompt = `Extrae solo la lista de ingredientes de esta receta como items del súper (una línea por item, sin cantidades exactas, sin bullet points):\n\n${receta}`;
+    const prompt = `Extrae solo los ingredientes de esta receta (una línea por item, sin cantidades, sin bullets):\n\n${receta}`;
     const ingredientes = await llamarClaude(prompt);
     const items = ingredientes.split('\n').map(i => i.trim()).filter(i => i.length > 2);
-    const ts = admin.firestore.FieldValue.serverTimestamp();
     for (const item of items) {
-      await db.collection('lista_super').add({ item, comprado: false, timestamp: ts });
+      await agregarItemSuperWP(item, 0);
     }
-    await bot.sendMessage(chatId, `✓ ${items.length} ingredientes agregados al súper:\n${items.join(', ')}`);
+    await bot.sendMessage(chatId, `✓ ${items.length} ingredientes en Supermercado:\n${items.join(', ')}`);
   }
 });
 
@@ -477,55 +614,46 @@ bot.on('callback_query', async (query) => {
 
 bot.on('message', async (msg) => {
   if (!msg.text || msg.text.startsWith('/')) return;
-
   const chatId = msg.chat.id;
   const texto = msg.text;
   const estado = userState[chatId] || {};
 
   try {
-    // Modo journal
+    // JOURNAL
     if (estado.modo === 'journal') {
       const detectados = await detectarYRegistrar(chatId, texto);
       await guardarAvance('journal', texto, 'journal');
-
-      const responderConEmpatia = texto.toLowerCase().includes('mamá') || texto.toLowerCase().includes('mama');
-      const extraCtx = responderConEmpatia
-        ? 'La usuaria mencionó a su mamá. Responde con empatía real, reconoce lo que implica cuidarla, sin sonar como psicólogo.'
+      const extraCtx = /mamá|mama/i.test(texto)
+        ? 'Mencionó a su mamá. Responde con empatía real, reconoce lo que implica cuidarla. Sin sonar como psicólogo.'
         : '';
-
       const respuesta = await llamarClaude(texto, extraCtx);
-
       let mensajeFinal = respuesta;
-      if (detectados.length > 0) {
-        mensajeFinal += `\n\n_${detectados.join(' · ')}_`;
-      }
+      if (detectados.length > 0) mensajeFinal += `\n\n_${detectados.join(' · ')}_`;
       await bot.sendMessage(chatId, mensajeFinal, { parse_mode: 'Markdown' });
       return;
     }
 
-    // Modo avance - escribiendo texto
+    // AVANCE
     if (estado.modo === 'avance_escribiendo') {
       await guardarAvance(estado.metaId, texto);
       const respuesta = await llamarClaude(
-        `Fernanda acaba de registrar este avance en su meta "${estado.metaNombre}": "${texto}". Respóndele con una confirmación breve y un comentario específico que la motive a seguir.`
+        `Fernanda registró este avance en su meta "${estado.metaNombre}": "${texto}". Responde con confirmación breve y algo específico que la motive.`
       );
       await bot.sendMessage(chatId, respuesta);
       userState[chatId] = null;
-      await bot.sendMessage(chatId, '¿Qué más hacemos?', { reply_markup: menuKeyboard() });
+      await bot.sendMessage(chatId, '¿Qué más?', { reply_markup: menuKeyboard() });
       return;
     }
 
-    // Modo check-in emocional
+    // CÓMO ESTOY
     if (estado.modo === 'como') {
       const esStresAlto = /agotada|estresada|mal|horrible|no puedo|cansada|frustrada/i.test(texto);
-      let extraCtx = '';
-      if (esStresAlto) {
-        extraCtx = 'Detecta estrés alto. Responde con empatía real. Al final, sugiere sutilmente: respirar, caminar, o escribirle más al bot en lugar de abrir redes sociales. Sin ser condescendiente.';
-      }
+      const extraCtx = esStresAlto
+        ? 'Detecta estrés alto. Empatía real, sin minimizar. Al final sugiere sutilmente: respirar, caminar, o escribirle más al bot en lugar de abrir redes sociales.'
+        : '';
       const respuesta = await llamarClaude(texto, extraCtx);
       await db.collection('consciencia').add({
-        texto,
-        tipo: 'checkin_emocional',
+        texto, tipo: 'checkin_emocional',
         fecha: new Date().toLocaleDateString('es-MX'),
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -534,20 +662,64 @@ bot.on('message', async (msg) => {
       return;
     }
 
-    // Modo agregar al súper
+    // SÚPER — agregar item
     if (estado.modo === 'super_agregar') {
-      const items = texto.split(',').map(i => i.trim()).filter(i => i.length > 0);
-      const ts = admin.firestore.FieldValue.serverTimestamp();
+      const items = texto.split(',').map(i => i.trim()).filter(i => i);
       for (const item of items) {
-        await db.collection('lista_super').add({ item, comprado: false, timestamp: ts });
+        await agregarItemSuperWP(item, estado.catIdx);
       }
-      await bot.sendMessage(chatId, `✓ Agregado: ${items.join(', ')}`);
+      await bot.sendMessage(chatId, `✓ Agregado a ${SHOP_CATS[estado.catIdx]}: ${items.join(', ')}`);
       userState[chatId] = null;
       await mostrarSuper(chatId);
       return;
     }
 
-    // Mensaje libre (sin modo activo) — responde como life coach
+    // GASTO — esperando monto
+    if (estado.modo === 'gasto_esperando_monto') {
+      const monto = parseFloat(texto.replace(/[^0-9.]/g, ''));
+      if (isNaN(monto) || monto <= 0) {
+        await bot.sendMessage(chatId, '¿Cuánto fue? (solo el número, ej: 250)');
+        return;
+      }
+      await confirmarGasto(chatId, estado.grupo, estado.sub, monto);
+      return;
+    }
+
+    // TAREA
+    if (estado.modo === 'tarea_escribiendo') {
+      await agregarTareaWP(texto);
+      await bot.sendMessage(chatId, `✅ Tarea agregada a tu semana:\n"${texto}"`);
+      userState[chatId] = null;
+      return;
+    }
+
+    // PENDIENTE
+    if (estado.modo === 'pendiente_escribiendo') {
+      await agregarPendienteWP(texto);
+      await bot.sendMessage(chatId, `📌 Pendiente guardado:\n"${texto}"`);
+      userState[chatId] = null;
+      return;
+    }
+
+    // AUTO-DETECCIÓN: gasto en texto libre
+    const gastoVerbo = /gast[eé]|pagu[eé]|cost[oó]|compr[eé]|pagamos|salió/i.test(texto);
+    const gastoMatch = texto.match(/\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:pesos?|mxn)/i);
+    if (gastoVerbo && gastoMatch) {
+      const montoStr = (gastoMatch[1] || gastoMatch[2]).replace(',', '.');
+      const monto = parseFloat(montoStr);
+      await iniciarGasto(chatId, monto);
+      return;
+    }
+
+    // AUTO-DETECCIÓN: pendiente en texto libre
+    if (/tengo que|hay que|necesito|debo(?! a)|me falta|recordarme/i.test(texto)) {
+      await agregarPendienteWP(texto);
+      const respuesta = await llamarClaude(texto);
+      await bot.sendMessage(chatId, respuesta + '\n\n_📌 Guardado en tus pendientes._', { parse_mode: 'Markdown' });
+      return;
+    }
+
+    // Mensaje libre — Claude con contexto
     const recientes = await getAvancesRecientes(5);
     const contexto = recientes.length > 0
       ? `Últimas entradas de Fernanda: ${recientes.map(a => a.texto.slice(0, 80)).join(' | ')}`
@@ -561,59 +733,87 @@ bot.on('message', async (msg) => {
   }
 });
 
-// === MENSAJES AUTOMÁTICOS CON CRON ===
+// === MENSAJES AUTOMÁTICOS ===
 
 if (FERNANDA_CHAT_ID) {
-  // 8:50am lunes a viernes
-  cron.schedule('50 8 * * 1-5', async () => {
+  // BRIEFING MAÑANA — 6:00am todos los días
+  cron.schedule('0 6 * * *', async () => {
     try {
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Buenos días Fer ☀️ Ya entrenaste, ya eres mejor que ayer.\n\n¿En qué vas a trabajar esta mañana?'
-      );
-    } catch (e) { console.error('Cron 8:50am error:', e); }
+      const hoy = new Date();
+      const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const diaHoy = dias[hoy.getDay()];
+      const entrenamientosDia = {
+        Lunes: 'Gym 💪',
+        Martes: 'Tennis 🎾 + Natación 🏊‍♀️ + Equitación 🐴',
+        Jueves: 'Tennis 🎾 + Natación 🏊‍♀️ + Equitación 🐴',
+      };
+      const entHoy = entrenamientosDia[diaHoy];
+      const tareas = await getTareasHoy();
+
+      let mensaje = `Buenos días Fer ☀️ Hoy es *${diaHoy}*.\n\n`;
+      if (entHoy) mensaje += `🏃‍♀️ *Entrenas hoy:* ${entHoy}\n\n`;
+      if (tareas.length > 0) {
+        mensaje += `📋 *En tu planner:*\n${tareas.slice(0, 5).map(t => `• ${t}`).join('\n')}\n\n`;
+      }
+      mensaje += `¿Cómo amaneciste de energía? 🔋`;
+
+      await bot.sendMessage(FERNANDA_CHAT_ID, mensaje, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 6am error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // 10:25am diario
+  // CIERRE BLOQUE PROFUNDO — 10:25am lun-vie
   cron.schedule('25 10 * * 1-5', async () => {
     try {
       await bot.sendMessage(FERNANDA_CHAT_ID,
-        'En 5 minutos termina tu bloque de trabajo profundo.\n\n¿Qué lograste esta mañana?'
+        'En 5 min termina tu bloque de trabajo profundo. ¿Qué lograste esta mañana?'
       );
     } catch (e) { console.error('Cron 10:25am error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // 12:55pm diario
+  // CIERRE MAÑANA — 12:55pm lun-vie
   cron.schedule('55 12 * * 1-5', async () => {
     try {
       await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Hora de cerrar la mañana.\n\n¿Qué fue lo más importante que hiciste hoy?'
+        'Hora de cerrar la mañana. ¿Qué fue lo más importante que hiciste hoy?'
       );
     } catch (e) { console.error('Cron 12:55pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // 9:00pm diario
-  cron.schedule('0 21 * * *', async () => {
+  // GASTOS — 6:30pm todos los días
+  cron.schedule('30 18 * * *', async () => {
     try {
       await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Antes de dormir — ¿cómo estuvo tu día? ¿Agarraste el cel sin razón hoy?'
+        '💸 ¿Tuviste algún gasto hoy?\n\nPuedes decirme "gasté $X en Y" o usar /gasto'
+      );
+    } catch (e) { console.error('Cron gastos error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // NOCTURNO — 9:00pm todos los días
+  cron.schedule('0 21 * * *', async () => {
+    try {
+      const tareas = await getTareasHoy();
+      const tareasTexto = tareas.length > 0
+        ? `\n\nTenías en el planner: ${tareas.slice(0, 3).join(', ')}.`
+        : '';
+      await bot.sendMessage(FERNANDA_CHAT_ID,
+        `El día se acaba 🌙${tareasTexto}\n\n¿Cómo estuvo? ¿Qué emociones cargaste hoy?`
       );
     } catch (e) { console.error('Cron 9pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // Domingo 7:00pm
+  // PROGRESO SEMANAL — Domingo 7:00pm
   cron.schedule('0 19 * * 0', async () => {
     try {
       await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Es domingo Fer. Escribe /progreso para ver cómo vas esta semana. 📊'
+        'Es domingo Fer 📊 ¿Cómo fue tu semana? Escribe /progreso para ver el resumen.'
       );
     } catch (e) { console.error('Cron domingo error:', e); }
   }, { timezone: 'America/Merida' });
 
   console.log('✓ Mensajes automáticos activados para Chat ID:', FERNANDA_CHAT_ID);
 } else {
-  console.log('⚠️  FERNANDA_CHAT_ID no configurado — mensajes automáticos desactivados. Envía /start al bot para obtener tu Chat ID.');
+  console.log('⚠️ FERNANDA_CHAT_ID no configurado');
 }
 
-// === INICIO ===
-console.log('🤖 Bot Semana Perfecta iniciado');
+console.log('🤖 Bot Semana Perfecta v2 iniciado — conectado a Weekly Planner');
 bot.on('polling_error', (error) => console.error('Polling error:', error.code));
