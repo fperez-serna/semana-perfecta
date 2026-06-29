@@ -237,6 +237,129 @@ async function registrarGasto(groupId, subId, monto) {
   );
 }
 
+// === HERRAMIENTAS PARA CLAUDE (TOOL USE) ===
+
+const TOOLS = [
+  {
+    name: 'agregar_tarea',
+    description: 'Agrega una tarea a la semana actual de Fernanda en su Weekly Planner.',
+    input_schema: {
+      type: 'object',
+      properties: { texto: { type: 'string', description: 'Descripción de la tarea' } },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'agregar_pendiente',
+    description: 'Guarda un pendiente en la lista de pendientes de Fernanda (algo que tiene que hacer pero sin fecha fija aún).',
+    input_schema: {
+      type: 'object',
+      properties: { texto: { type: 'string', description: 'Descripción del pendiente' } },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'agregar_item_super',
+    description: 'Agrega un item a la lista del súper de Fernanda.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Nombre del producto' },
+        categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría de la lista del súper' },
+      },
+      required: ['item', 'categoria'],
+    },
+  },
+  {
+    name: 'guardar_avance_meta',
+    description: 'Registra un avance en una de las 13 metas de Fernanda.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        meta_id: { type: 'string', enum: METAS.map(m => m.id), description: 'id de la meta correspondiente' },
+        texto: { type: 'string', description: 'Descripción del avance' },
+      },
+      required: ['meta_id', 'texto'],
+    },
+  },
+  {
+    name: 'guardar_dato_importante',
+    description: 'Guarda un dato importante en la memoria permanente del bot, para recordarlo en futuras conversaciones.',
+    input_schema: {
+      type: 'object',
+      properties: { texto: { type: 'string', description: 'El dato a recordar' } },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'registrar_gasto',
+    description: 'Registra un gasto en el presupuesto de Fernanda. Solo úsala si el área y la subcategoría son claras por el mensaje; si no estás segura, pregunta antes de llamarla.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        grupo: { type: 'string', description: 'Nombre del área de gasto, ej. "Casa", "Personal"' },
+        subcategoria: { type: 'string', description: 'Nombre de la subcategoría dentro del área' },
+        monto: { type: 'number', description: 'Monto gastado en pesos mexicanos' },
+      },
+      required: ['grupo', 'subcategoria', 'monto'],
+    },
+  },
+];
+
+async function ejecutarRegistrarGasto(grupoNombre, subNombre, monto) {
+  const config = await getBudgetConfig();
+  const grupos = config?.groups || [];
+  const grupo = grupos.find(g => g.name.toLowerCase() === grupoNombre.toLowerCase())
+    || grupos.find(g => g.name.toLowerCase().includes(grupoNombre.toLowerCase()));
+  if (!grupo) {
+    return { ok: false, mensaje: `No encontré el área "${grupoNombre}". Áreas disponibles: ${grupos.map(g => g.name).join(', ')}` };
+  }
+  const sub = (grupo.subs || []).find(s => s.name.toLowerCase() === subNombre.toLowerCase())
+    || (grupo.subs || []).find(s => s.name.toLowerCase().includes(subNombre.toLowerCase()));
+  if (!sub) {
+    return { ok: false, mensaje: `No encontré la subcategoría "${subNombre}" en ${grupo.name}. Opciones: ${(grupo.subs || []).map(s => s.name).join(', ')}` };
+  }
+  await registrarGasto(grupo.id, sub.id, monto);
+  return { ok: true, mensaje: `Gasto de $${monto} registrado en ${grupo.name} → ${sub.name}` };
+}
+
+async function ejecutarHerramienta(nombre, input) {
+  switch (nombre) {
+    case 'agregar_tarea':
+      await agregarTareaWP(input.texto);
+      return { resultado: `Tarea agregada: "${input.texto}"`, etiqueta: 'tarea agregada al planner ✓' };
+
+    case 'agregar_pendiente':
+      await agregarPendienteWP(input.texto);
+      return { resultado: `Pendiente guardado: "${input.texto}"`, etiqueta: 'pendiente guardado ✓' };
+
+    case 'agregar_item_super': {
+      const catIdx = SHOP_CATS.findIndex(c => c.toLowerCase() === String(input.categoria).toLowerCase());
+      const idx = catIdx >= 0 ? catIdx : 0;
+      await agregarItemSuperWP(input.item, idx);
+      return { resultado: `"${input.item}" agregado a ${SHOP_CATS[idx]}`, etiqueta: `${input.item} agregado al súper ✓` };
+    }
+
+    case 'guardar_avance_meta': {
+      const meta = METAS.find(m => m.id === input.meta_id);
+      await guardarAvance(input.meta_id, input.texto);
+      return { resultado: `Avance guardado en ${meta?.nombre || input.meta_id}`, etiqueta: `avance en ${meta?.nombre || input.meta_id} ✓` };
+    }
+
+    case 'guardar_dato_importante':
+      await guardarDatoImportante(input.texto);
+      return { resultado: `Guardado en memoria: "${input.texto}"`, etiqueta: 'dato guardado en memoria ✓' };
+
+    case 'registrar_gasto': {
+      const r = await ejecutarRegistrarGasto(input.grupo, input.subcategoria, input.monto);
+      return { resultado: r.mensaje, etiqueta: r.ok ? `gasto de $${input.monto} registrado ✓` : null };
+    }
+
+    default:
+      return { resultado: `Herramienta desconocida: ${nombre}`, etiqueta: null };
+  }
+}
+
 // === CLAUDE API ===
 
 async function llamarClaude(userMessage, contextoExtra = '') {
@@ -253,6 +376,7 @@ async function llamarClaude(userMessage, contextoExtra = '') {
 }
 
 async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
+  const acciones = [];
   try {
     const [datos, historial] = await Promise.all([
       getDatosImportantes(),
@@ -268,21 +392,43 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
       systemFinal += '\n\nContexto adicional:\n' + extraCtx;
     }
 
-    const messages = [
+    let messages = [
       ...historial.map(m => ({ role: m.role, content: m.texto })),
       { role: 'user', content: userMessage },
     ];
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
-      system: systemFinal,
-      messages,
-    });
-    return response.content[0]?.text || '';
+    let texto = '';
+    for (let i = 0; i < 5; i++) {
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 600,
+        system: systemFinal,
+        tools: TOOLS,
+        messages,
+      });
+
+      const textBlock = response.content.find(b => b.type === 'text');
+      if (textBlock) texto = textBlock.text;
+
+      const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
+      if (response.stop_reason !== 'tool_use' || toolUseBlocks.length === 0) break;
+
+      messages.push({ role: 'assistant', content: response.content });
+
+      const toolResults = [];
+      for (const tool of toolUseBlocks) {
+        const { resultado, etiqueta } = await ejecutarHerramienta(tool.name, tool.input);
+        if (etiqueta) acciones.push(etiqueta);
+        toolResults.push({ type: 'tool_result', tool_use_id: tool.id, content: resultado });
+      }
+      messages.push({ role: 'user', content: toolResults });
+    }
+
+    return { texto, acciones };
   } catch (e) {
     console.error('llamarClaudeConMemoria error:', e);
-    return llamarClaude(userMessage, extraCtx);
+    const texto = await llamarClaude(userMessage, extraCtx);
+    return { texto, acciones: [] };
   }
 }
 
@@ -760,10 +906,11 @@ bot.on('message', async (msg) => {
       const extraCtx = /mamá|mama/i.test(texto)
         ? 'Mencionó a su mamá. Responde con empatía real, reconoce lo que implica cuidarla. Sin sonar como psicólogo.'
         : '';
-      const respuesta = await llamarClaudeConMemoria(texto, extraCtx);
+      const { texto: respuesta, acciones } = await llamarClaudeConMemoria(texto, extraCtx);
       await guardarMensajeConversacion('assistant', respuesta);
       let mensajeFinal = respuesta;
-      if (detectados.length > 0) mensajeFinal += `\n\n_${detectados.join(' · ')}_`;
+      const todasAcciones = [...detectados, ...acciones];
+      if (todasAcciones.length > 0) mensajeFinal += `\n\n_${todasAcciones.join(' · ')}_`;
       await bot.sendMessage(chatId, mensajeFinal, { parse_mode: 'Markdown' });
       return;
     }
@@ -836,19 +983,7 @@ bot.on('message', async (msg) => {
       return;
     }
 
-    // AUTO-DETECCIÓN: dato importante
-    const matchDato = texto.match(/^(?:dato importante|recuerda que)[:：]\s*(.+)/i);
-    if (matchDato) {
-      const datoTexto = matchDato[1].trim();
-      await guardarDatoImportante(datoTexto);
-      await bot.sendMessage(chatId,
-        `✅ Guardado en mi memoria:\n"${datoTexto}"\n\n_Lo voy a recordar siempre._`,
-        { parse_mode: 'Markdown' }
-      );
-      return;
-    }
-
-    // AUTO-DETECCIÓN: gasto en texto libre
+    // AUTO-DETECCIÓN: gasto en texto libre con monto claro → flujo de botones (más confiable que tool use para dinero)
     const gastoVerbo = /gast[eé]|pagu[eé]|cost[oó]|compr[eé]|pagamos|salió/i.test(texto);
     const gastoMatch = texto.match(/\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:pesos?|mxn)/i);
     if (gastoVerbo && gastoMatch) {
@@ -858,39 +993,13 @@ bot.on('message', async (msg) => {
       return;
     }
 
-    // AUTO-DETECCIÓN: agregar tarea explícita
-    const matchTarea = texto.match(/^(?:agrega(?:r)?|añade?|pon|mete)\s+(?:(?:esto?|eso|la tarea|una tarea)\s+)?(?:a\s+)?(?:mis\s+tareas?|el\s+planner|mi\s+semana)[:\s]+(.+)/i)
-      || texto.match(/^tarea[:\s]+(.+)/i);
-    if (matchTarea) {
-      const tareaTexto = matchTarea[1].trim();
-      await agregarTareaWP(tareaTexto);
-      await bot.sendMessage(chatId, `✅ Tarea agregada a tu semana:\n"${tareaTexto}"`);
-      return;
-    }
-
-    // AUTO-DETECCIÓN: agregar pendiente explícita
-    const matchPendiente = texto.match(/^(?:agrega(?:r)?|añade?|pon|mete|guarda)\s+(?:(?:esto?|eso|el\s+pendiente|un\s+pendiente)\s+)?(?:a\s+)?(?:mis\s+pendientes?|mi\s+lista)[:\s]+(.+)/i)
-      || texto.match(/^pendiente[:\s]+(.+)/i);
-    if (matchPendiente) {
-      const pendTexto = matchPendiente[1].trim();
-      await agregarPendienteWP(pendTexto);
-      await bot.sendMessage(chatId, `📌 Pendiente guardado:\n"${pendTexto}"`);
-      return;
-    }
-
-    // AUTO-DETECCIÓN: pendiente en texto libre
-    if (/tengo que|hay que|necesito|debo(?! a)|me falta|recordarme/i.test(texto)) {
-      await agregarPendienteWP(texto);
-      const respuesta = await llamarClaude(texto);
-      await bot.sendMessage(chatId, respuesta + '\n\n_📌 Guardado en tus pendientes._', { parse_mode: 'Markdown' });
-      return;
-    }
-
-    // Mensaje libre — Claude con memoria completa
+    // Mensaje libre — Claude con memoria completa y tool use real
     await guardarMensajeConversacion('user', texto);
-    const respuesta = await llamarClaudeConMemoria(texto);
+    const { texto: respuesta, acciones } = await llamarClaudeConMemoria(texto);
     await guardarMensajeConversacion('assistant', respuesta);
-    await bot.sendMessage(chatId, respuesta);
+    let mensajeFinal = respuesta;
+    if (acciones.length > 0) mensajeFinal += `\n\n_${acciones.join(' · ')}_`;
+    await bot.sendMessage(chatId, mensajeFinal, { parse_mode: 'Markdown' });
 
   } catch (e) {
     console.error('Error procesando mensaje:', e);
