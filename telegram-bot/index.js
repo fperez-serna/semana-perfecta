@@ -303,6 +303,40 @@ async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
   return true;
 }
 
+async function completarEnfoqueDiaWP(texto, wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const data = doc.exists ? doc.data() : {};
+  const focusDia = data.focus?.[wpDay] || {};
+  const lower = texto.toLowerCase();
+  const slot = [1, 2, 3].find(n => focusDia[n] && focusDia[n].toLowerCase().includes(lower));
+  if (!slot) return null;
+  const key = `${wpDay}_${slot}`;
+  await wpUser().doc(weekId).set(
+    { focusDone: { [key]: String(wpDay) } },
+    { merge: true }
+  );
+  return focusDia[slot];
+}
+
+async function borrarEnfoqueDiaWP(texto, wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const data = doc.exists ? doc.data() : {};
+  const focusDia = data.focus?.[wpDay] || {};
+  const lower = texto.toLowerCase();
+  const slot = [1, 2, 3].find(n => focusDia[n] && focusDia[n].toLowerCase().includes(lower));
+  if (!slot) return null;
+  const textoBorrado = focusDia[slot];
+  await wpUser().doc(weekId).set(
+    { focus: { [wpDay]: { ...focusDia, [slot]: '' } } },
+    { merge: true }
+  );
+  return textoBorrado;
+}
+
 async function tacharItemSuperWP(itemTexto, catIndex) {
   const cats = await getListaSuperWP();
   const key = `cat${catIndex}`;
@@ -412,6 +446,30 @@ const TOOLS = [
     },
   },
   {
+    name: 'completar_enfoque_dia',
+    description: 'Marca un enfoque del día como completado/tachado (✓). Usa parte del texto del enfoque para identificarlo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string', description: 'Texto o fragmento del enfoque a tachar' },
+        dia: { type: 'number', description: 'Día de la semana en formato Weekly Planner (0=lunes … 6=domingo). Omitir para usar el día actual.', minimum: 0, maximum: 6 },
+      },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'borrar_enfoque_dia',
+    description: 'Elimina por completo un enfoque del día (libera ese espacio, a diferencia de tacharlo). Usa parte del texto del enfoque para identificarlo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string', description: 'Texto o fragmento del enfoque a borrar' },
+        dia: { type: 'number', description: 'Día de la semana en formato Weekly Planner (0=lunes … 6=domingo). Omitir para usar el día actual.', minimum: 0, maximum: 6 },
+      },
+      required: ['texto'],
+    },
+  },
+  {
     name: 'tachar_item_super',
     description: 'Marca un ítem de la lista del súper como comprado.',
     input_schema: {
@@ -498,6 +556,20 @@ async function ejecutarHerramienta(nombre, input) {
       const agregado = await agregarEnfoqueDiaWP(input.texto, dia);
       if (!agregado) return { resultado: 'Ya hay 3 enfoques agregados para ese día (es el máximo). Pregúntale a Fernanda si quiere reemplazar alguno.', etiqueta: null };
       return { resultado: `Enfoque agregado: "${input.texto}"`, etiqueta: 'enfoque del día agregado ✓' };
+    }
+
+    case 'completar_enfoque_dia': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      const completado = await completarEnfoqueDiaWP(input.texto, dia);
+      if (!completado) return { resultado: `No encontré un enfoque con "${input.texto}" en ese día.`, etiqueta: null };
+      return { resultado: `Enfoque tachado: "${completado}"`, etiqueta: `"${completado}" tachado ✓` };
+    }
+
+    case 'borrar_enfoque_dia': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      const borrado = await borrarEnfoqueDiaWP(input.texto, dia);
+      if (!borrado) return { resultado: `No encontré un enfoque con "${input.texto}" en ese día.`, etiqueta: null };
+      return { resultado: `Enfoque borrado: "${borrado}"`, etiqueta: `"${borrado}" eliminado ✓` };
     }
 
     case 'tachar_item_super': {
