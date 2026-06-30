@@ -197,7 +197,7 @@ async function agregarTareaWP(texto) {
 }
 
 async function agregarPendienteWP(texto) {
-  const fecha = new Date().toISOString().split('T')[0];
+  const fecha = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Merida' }).format(new Date());
   const id = 't' + Date.now();
   const doc = await wpUser().doc('pending_tasks').get();
   const tasks = doc.exists ? (doc.data().tasks || []) : [];
@@ -235,6 +235,34 @@ async function registrarGasto(groupId, subId, monto) {
     { [key]: admin.firestore.FieldValue.increment(monto) },
     { merge: true }
   );
+}
+
+const DEFAULT_GASTOS = ['🍽 Restaurante', '🛒 Supermercado', '🎬 Entretenimiento', '⛽ Gasolina', '🚗 Transporte', '📱 Suscripción', '💪 Ejercicio', '📚 Escuela', '🔧 Pago a servicio', '💼 Negocio', '🏠 Casa', '💳 Préstamo', '✈️ Viaje', '💸 Otro'];
+
+async function getGastoCats() {
+  try {
+    const doc = await wpUser().doc('config').get();
+    const cats = doc.exists ? doc.data()?.cfg?.gastoCats : null;
+    return (cats && cats.length > 0) ? cats : DEFAULT_GASTOS;
+  } catch { return DEFAULT_GASTOS; }
+}
+
+async function getMetodosPago() {
+  try {
+    const config = await getBudgetConfig();
+    const tarjetas = (config?.debts || []).filter(d => d.tipo === 'tarjeta').map(d => d.nombre);
+    return ['Efectivo', 'Débito', 'Transferencia', ...tarjetas];
+  } catch { return ['Efectivo', 'Débito', 'Transferencia']; }
+}
+
+async function agregarGastoDia(desc, cat, monto, pagoCon) {
+  const weekId = getWeekId();
+  const wpDay = jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const gastos = (doc.exists ? doc.data().gastos : null) || {};
+  if (!gastos[wpDay]) gastos[wpDay] = [];
+  gastos[wpDay].push({ desc, cat, monto, pagoCon });
+  await wpUser().doc(weekId).set({ gastos }, { merge: true });
 }
 
 async function getPendientesWP() {
@@ -337,16 +365,17 @@ const TOOLS = [
     },
   },
   {
-    name: 'registrar_gasto',
-    description: 'Registra un gasto en el presupuesto de Fernanda. Solo úsala si el área y la subcategoría son claras por el mensaje; si no estás segura, pregunta antes de llamarla.',
+    name: 'agregar_gasto_dia',
+    description: 'Agrega un gasto al widget de gastos del día de Fernanda en su Weekly Planner. Usa esto cuando mencione cualquier gasto, compra o pago. Si falta algún dato (descripción, categoría, monto o forma de pago) pregunta antes de llamarla.',
     input_schema: {
       type: 'object',
       properties: {
-        grupo: { type: 'string', description: 'Nombre del área de gasto, ej. "Casa", "Personal"' },
-        subcategoria: { type: 'string', description: 'Nombre de la subcategoría dentro del área' },
-        monto: { type: 'number', description: 'Monto gastado en pesos mexicanos' },
+        desc: { type: 'string', description: 'Descripción breve del gasto, ej. "Comida Costco", "Gasolina OXXO"' },
+        cat: { type: 'string', description: 'Rubro/categoría del gasto según las opciones de Fernanda, ej. "🛒 Supermercado", "⛽ Gasolina", "🍽 Restaurante". Usa el texto exacto de su lista de rubros (disponible en contexto).' },
+        monto: { type: 'number', description: 'Monto en pesos mexicanos' },
+        pago_con: { type: 'string', description: 'Forma de pago: "Efectivo", "Débito", "Transferencia", o el nombre exacto de una tarjeta de crédito de Fernanda (disponible en contexto).' },
       },
-      required: ['grupo', 'subcategoria', 'monto'],
+      required: ['desc', 'cat', 'monto', 'pago_con'],
     },
   },
   {
@@ -435,9 +464,15 @@ async function ejecutarHerramienta(nombre, input) {
       await guardarDatoImportante(input.texto);
       return { resultado: `Guardado en memoria: "${input.texto}"`, etiqueta: 'dato guardado en memoria ✓' };
 
-    case 'registrar_gasto': {
-      const r = await ejecutarRegistrarGasto(input.grupo, input.subcategoria, input.monto);
-      return { resultado: r.mensaje, etiqueta: r.ok ? `gasto de $${input.monto} registrado ✓` : null };
+    case 'agregar_gasto_dia': {
+      const gastoCats = await getGastoCats();
+      const catLower = String(input.cat).toLowerCase();
+      const catMatch = gastoCats.find(c => c.toLowerCase() === catLower)
+        || gastoCats.find(c => c.toLowerCase().includes(catLower))
+        || gastoCats.find(c => catLower.includes(c.replace(/^\S+\s/, '').toLowerCase()));
+      const cat = catMatch || input.cat;
+      await agregarGastoDia(input.desc, cat, input.monto, input.pago_con);
+      return { resultado: `Gasto guardado: ${input.desc} — $${input.monto} (${cat}, ${input.pago_con})`, etiqueta: `$${input.monto} en ${cat} ✓` };
     }
 
     case 'ver_pendientes': {
@@ -490,12 +525,15 @@ async function llamarClaude(userMessage, contextoExtra = '') {
 async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
   const acciones = [];
   try {
-    const [datos, historial] = await Promise.all([
+    const [datos, historial, gastoCats, metodosPago] = await Promise.all([
       getDatosImportantes(),
       getHistorialReciente(30),
+      getGastoCats(),
+      getMetodosPago(),
     ]);
 
     let systemFinal = SYSTEM_PROMPT;
+    systemFinal += `\n\n## Opciones para gastos del día:\n- Rubros: ${gastoCats.join(', ')}\n- Formas de pago: ${metodosPago.join(', ')}`;
     if (datos.length > 0) {
       systemFinal += '\n\n## Lo que recuerdas de Fernanda (datos importantes guardados):\n'
         + datos.map(d => `- ${d.texto}`).join('\n');
@@ -1092,16 +1130,6 @@ bot.on('message', async (msg) => {
       await agregarPendienteWP(texto);
       await bot.sendMessage(chatId, `📌 Pendiente guardado:\n"${texto}"`);
       userState[chatId] = null;
-      return;
-    }
-
-    // AUTO-DETECCIÓN: gasto en texto libre con monto claro → flujo de botones (más confiable que tool use para dinero)
-    const gastoVerbo = /gast[eé]|pagu[eé]|cost[oó]|compr[eé]|pagamos|salió/i.test(texto);
-    const gastoMatch = texto.match(/\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:pesos?|mxn)/i);
-    if (gastoVerbo && gastoMatch) {
-      const montoStr = (gastoMatch[1] || gastoMatch[2]).replace(',', '.');
-      const monto = parseFloat(montoStr);
-      await iniciarGasto(chatId, monto);
       return;
     }
 
