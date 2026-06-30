@@ -248,6 +248,49 @@ async function getDatosGarmin() {
   return null;
 }
 
+function faseLunar(fecha = new Date()) {
+  const SYNODIC = 29.53058867;
+  const refNewMoon = Date.UTC(2000, 0, 6, 18, 14);
+  const diffDias = (fecha.getTime() - refNewMoon) / 86400000;
+  let frac = (diffDias % SYNODIC) / SYNODIC;
+  if (frac < 0) frac += 1;
+  if (frac < 0.0625 || frac >= 0.9375) return 'Luna Nueva';
+  if (frac < 0.1875) return 'Luna Creciente';
+  if (frac < 0.3125) return 'Cuarto Creciente';
+  if (frac < 0.4375) return 'Gibosa Creciente';
+  if (frac < 0.5625) return 'Luna Llena';
+  if (frac < 0.6875) return 'Gibosa Menguante';
+  if (frac < 0.8125) return 'Cuarto Menguante';
+  return 'Luna Menguante';
+}
+
+async function getCiclo() {
+  const doc = await wpUser().doc('ciclo').get();
+  return doc.exists ? doc.data() : null;
+}
+
+async function registrarInicioPeriodoWP(fecha = null) {
+  const fechaInicio = fecha || fechaLocalHoy();
+  await wpUser().doc('ciclo').set(
+    { ultimoInicio: fechaInicio, duracionPromedio: 28 },
+    { merge: true }
+  );
+  return fechaInicio;
+}
+
+function calcularCiclo(ultimoInicio, duracionPromedio = 28) {
+  const inicio = new Date(ultimoInicio + 'T00:00:00');
+  const hoy = new Date(fechaLocalHoy() + 'T00:00:00');
+  const diaCiclo = Math.floor((hoy - inicio) / 86400000) + 1;
+  let fase;
+  if (diaCiclo <= 5) fase = 'Menstrual';
+  else if (diaCiclo <= 13) fase = 'Folicular';
+  else if (diaCiclo <= 16) fase = 'Ovulación';
+  else if (diaCiclo <= duracionPromedio) fase = 'Lútea';
+  else fase = 'Lútea (ciclo más largo de lo usual)';
+  return { diaCiclo, fase };
+}
+
 async function getBudgetConfig() {
   const doc = await wpUser().doc('budget_config').get();
   return doc.exists ? doc.data() : null;
@@ -444,6 +487,22 @@ const TOOLS = [
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
+    name: 'ver_ciclo_luna',
+    description: 'Calcula el día actual del ciclo menstrual de Fernanda, la fase hormonal aproximada (Menstrual/Folicular/Ovulación/Lútea) y la fase lunar de hoy. OBLIGATORIO: úsala siempre que pregunte en qué día de su ciclo va, su fase hormonal, o la fase de la luna — nunca lo respondas sin llamar esta herramienta primero.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'registrar_inicio_periodo',
+    description: 'Registra que le bajó el periodo, reiniciando el conteo del ciclo. Úsala cuando diga frases como "me bajó", "me llegó mi periodo", "empecé a menstruar", etc.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD si mencionó una fecha distinta a hoy. Omitir para usar hoy.' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'ver_pendientes',
     description: 'Lee la lista de pendientes actuales de Fernanda. OBLIGATORIO: úsala siempre que ella pregunte qué pendientes tiene, antes de responder — nunca contestes esa pregunta sin llamar esta herramienta primero. También úsala antes de completar_pendiente si no estás segura de cuál tachar.',
     input_schema: { type: 'object', properties: {}, required: [] },
@@ -569,6 +628,21 @@ async function ejecutarHerramienta(nombre, input) {
       if (!datos) return { resultado: 'No hay datos de Garmin sincronizados todavía.', etiqueta: null };
       const resultado = `Datos de Garmin del ${datos.fecha}: HRV ${datos.hrv ?? 'N/D'}, Body Battery ${datos.bodyBattery ?? 'N/D'}, estrés ${datos.stress ?? 'N/D'}, FC en reposo ${datos.restingHR ?? 'N/D'}, SpO2 ${datos.spo2 ?? 'N/D'}%, sueño ${datos.suenoHoras ?? 'N/D'}h (score ${datos.suenoScore ?? 'N/D'})`;
       return { resultado, etiqueta: null };
+    }
+
+    case 'ver_ciclo_luna': {
+      const ciclo = await getCiclo();
+      const luna = faseLunar();
+      if (!ciclo || !ciclo.ultimoInicio) {
+        return { resultado: `Fase lunar de hoy: ${luna}. No tengo registrado el inicio de su último periodo, así que no puedo calcular el día del ciclo.`, etiqueta: null };
+      }
+      const { diaCiclo, fase } = calcularCiclo(ciclo.ultimoInicio, ciclo.duracionPromedio);
+      return { resultado: `Día ${diaCiclo} del ciclo, fase ${fase}. Fase lunar de hoy: ${luna}.`, etiqueta: null };
+    }
+
+    case 'registrar_inicio_periodo': {
+      const fecha = await registrarInicioPeriodoWP(input.fecha || null);
+      return { resultado: `Periodo registrado, inicio: ${fecha}.`, etiqueta: 'inicio de periodo registrado ✓' };
     }
 
     case 'ver_pendientes': {
