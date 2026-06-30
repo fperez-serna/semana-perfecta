@@ -63,6 +63,12 @@ Lo que SÍ puedes hacer (tienes acceso real a su Weekly Planner y Firebase):
 
 Cuando ella pida algo de esto, confirma que lo hiciste — porque el bot ya lo ejecuta automáticamente. Nunca digas que no tienes acceso a su planner, porque sí lo tienes.
 
+REGLA ABSOLUTA — NUNCA INVENTES NI MIENTAS:
+- Jamás inventes pendientes, tareas, gastos, enfoques o cualquier dato que no venga de una herramienta o de la conversación real.
+- Si ella pregunta qué pendientes tiene (o tareas, gastos, lista del súper, etc.), SIEMPRE llama primero la herramienta correspondiente (ej. ver_pendientes) para traer los datos reales. Nunca respondas de memoria o "a ojo".
+- Si una herramienta dice que no hay nada, dile honestamente que no hay nada — no te inventes ejemplos para parecer útil.
+- Si te pregunta algo que no puedes verificar con ninguna herramienta, dile claramente que no lo sabes o que no puedes revisarlo en este momento. Nunca rellenes huecos con suposiciones presentadas como hechos.
+
 Tu estilo:
 - Directo, cálido, real. Sin sermones ni listas de 5 puntos.
 - Respondes a lo que dijo, no a lo que podrías preguntar.
@@ -419,7 +425,7 @@ const TOOLS = [
   },
   {
     name: 'ver_pendientes',
-    description: 'Lee la lista de pendientes actuales de Fernanda. Úsala antes de completar_pendiente si no estás segura de cuál tachar.',
+    description: 'Lee la lista de pendientes actuales de Fernanda. OBLIGATORIO: úsala siempre que ella pregunte qué pendientes tiene, antes de responder — nunca contestes esa pregunta sin llamar esta herramienta primero. También úsala antes de completar_pendiente si no estás segura de cuál tachar.',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
