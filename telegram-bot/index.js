@@ -237,6 +237,51 @@ async function registrarGasto(groupId, subId, monto) {
   );
 }
 
+async function getPendientesWP() {
+  const doc = await wpUser().doc('pending_tasks').get();
+  if (!doc.exists) return [];
+  return (doc.data().tasks || []).filter(t => !t.done);
+}
+
+async function completarPendienteWP(textoOId) {
+  const doc = await wpUser().doc('pending_tasks').get();
+  if (!doc.exists) return false;
+  const tasks = doc.data().tasks || [];
+  const lower = textoOId.toLowerCase();
+  const idx = tasks.findIndex(t =>
+    t.id === textoOId || t.text.toLowerCase().includes(lower)
+  );
+  if (idx < 0) return false;
+  tasks[idx] = { ...tasks[idx], done: true };
+  await wpUser().doc('pending_tasks').set({ tasks });
+  return tasks[idx].text;
+}
+
+async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const data = doc.exists ? doc.data() : {};
+  const focusDia = data.focus?.[wpDay] || {};
+  const nextSlot = Object.keys(focusDia).length;
+  await wpUser().doc(weekId).set(
+    { focus: { [wpDay]: { ...focusDia, [nextSlot]: texto } } },
+    { merge: true }
+  );
+}
+
+async function tacharItemSuperWP(itemTexto, catIndex) {
+  const cats = await getListaSuperWP();
+  const key = `cat${catIndex}`;
+  const items = [...(cats[key] || [])];
+  const lower = itemTexto.toLowerCase();
+  const idx = items.findIndex(it => !it.done && it.text.toLowerCase().includes(lower));
+  if (idx < 0) return false;
+  items[idx] = { ...items[idx], done: true };
+  await wpUser().doc('shopping').update({ [`cats.${key}`]: items });
+  return items[idx].text;
+}
+
 // === HERRAMIENTAS PARA CLAUDE (TOOL USE) ===
 
 const TOOLS = [
@@ -304,6 +349,46 @@ const TOOLS = [
       required: ['grupo', 'subcategoria', 'monto'],
     },
   },
+  {
+    name: 'ver_pendientes',
+    description: 'Lee la lista de pendientes actuales de Fernanda. Úsala antes de completar_pendiente si no estás segura de cuál tachar.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'completar_pendiente',
+    description: 'Marca un pendiente como completado/tachado. Usa parte del texto del pendiente para identificarlo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string', description: 'Texto o fragmento del pendiente a tachar' },
+      },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'agregar_enfoque_dia',
+    description: 'Agrega un enfoque/tarea al bloque de enfoque del día en el Weekly Planner de Fernanda.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        texto: { type: 'string', description: 'El enfoque o tarea a agregar' },
+        dia: { type: 'number', description: 'Día de la semana en formato Weekly Planner (0=lunes … 6=domingo). Omitir para usar el día actual.', minimum: 0, maximum: 6 },
+      },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'tachar_item_super',
+    description: 'Marca un ítem de la lista del súper como comprado.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Nombre o fragmento del ítem a marcar como comprado' },
+        categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría donde está el ítem' },
+      },
+      required: ['item', 'categoria'],
+    },
+  },
 ];
 
 async function ejecutarRegistrarGasto(grupoNombre, subNombre, monto) {
@@ -353,6 +438,33 @@ async function ejecutarHerramienta(nombre, input) {
     case 'registrar_gasto': {
       const r = await ejecutarRegistrarGasto(input.grupo, input.subcategoria, input.monto);
       return { resultado: r.mensaje, etiqueta: r.ok ? `gasto de $${input.monto} registrado ✓` : null };
+    }
+
+    case 'ver_pendientes': {
+      const pendientes = await getPendientesWP();
+      if (pendientes.length === 0) return { resultado: 'No hay pendientes.', etiqueta: null };
+      const lista = pendientes.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
+      return { resultado: lista, etiqueta: null };
+    }
+
+    case 'completar_pendiente': {
+      const completado = await completarPendienteWP(input.texto);
+      if (!completado) return { resultado: `No encontré un pendiente con "${input.texto}". Usa ver_pendientes para ver la lista.`, etiqueta: null };
+      return { resultado: `Pendiente tachado: "${completado}"`, etiqueta: `"${completado}" tachado ✓` };
+    }
+
+    case 'agregar_enfoque_dia': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      await agregarEnfoqueDiaWP(input.texto, dia);
+      return { resultado: `Enfoque agregado: "${input.texto}"`, etiqueta: 'enfoque del día agregado ✓' };
+    }
+
+    case 'tachar_item_super': {
+      const catIdx = SHOP_CATS.findIndex(c => c.toLowerCase() === String(input.categoria).toLowerCase());
+      const idx = catIdx >= 0 ? catIdx : 0;
+      const tachado = await tacharItemSuperWP(input.item, idx);
+      if (!tachado) return { resultado: `No encontré "${input.item}" en ${SHOP_CATS[idx]}.`, etiqueta: null };
+      return { resultado: `"${tachado}" marcado como comprado`, etiqueta: `${tachado} comprado ✓` };
     }
 
     default:
