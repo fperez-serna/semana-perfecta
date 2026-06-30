@@ -233,6 +233,21 @@ async function agregarItemSuperWP(item, catIndex) {
   }
 }
 
+function fechaLocalHoy(offsetDias = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDias);
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Merida' }).format(d);
+}
+
+async function getDatosGarmin() {
+  for (const offset of [0, -1]) {
+    const fecha = fechaLocalHoy(offset);
+    const doc = await wpUser().doc(`garmin_${fecha}`).get();
+    if (doc.exists) return { fecha, ...doc.data() };
+  }
+  return null;
+}
+
 async function getBudgetConfig() {
   const doc = await wpUser().doc('budget_config').get();
   return doc.exists ? doc.data() : null;
@@ -424,6 +439,11 @@ const TOOLS = [
     },
   },
   {
+    name: 'ver_datos_garmin',
+    description: 'Lee los datos de salud de Fernanda sincronizados desde su reloj Garmin: HRV, Body Battery, nivel de estrés, SpO2, frecuencia cardíaca en reposo y datos de sueño (horas y score). OBLIGATORIO: úsala siempre que pregunte cómo durmió, su HRV, body battery, estrés, o cualquier dato de su Garmin — nunca respondas eso sin llamar esta herramienta primero.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
     name: 'ver_pendientes',
     description: 'Lee la lista de pendientes actuales de Fernanda. OBLIGATORIO: úsala siempre que ella pregunte qué pendientes tiene, antes de responder — nunca contestes esa pregunta sin llamar esta herramienta primero. También úsala antes de completar_pendiente si no estás segura de cuál tachar.',
     input_schema: { type: 'object', properties: {}, required: [] },
@@ -542,6 +562,13 @@ async function ejecutarHerramienta(nombre, input) {
       const cat = catMatch || input.cat;
       await agregarGastoDia(input.desc, cat, input.monto, input.pago_con);
       return { resultado: `Gasto guardado: ${input.desc} — $${input.monto} (${cat}, ${input.pago_con})`, etiqueta: `$${input.monto} en ${cat} ✓` };
+    }
+
+    case 'ver_datos_garmin': {
+      const datos = await getDatosGarmin();
+      if (!datos) return { resultado: 'No hay datos de Garmin sincronizados todavía.', etiqueta: null };
+      const resultado = `Datos de Garmin del ${datos.fecha}: HRV ${datos.hrv ?? 'N/D'}, Body Battery ${datos.bodyBattery ?? 'N/D'}, estrés ${datos.stress ?? 'N/D'}, FC en reposo ${datos.restingHR ?? 'N/D'}, SpO2 ${datos.spo2 ?? 'N/D'}%, sueño ${datos.suenoHoras ?? 'N/D'}h (score ${datos.suenoScore ?? 'N/D'})`;
+      return { resultado, etiqueta: null };
     }
 
     case 'ver_pendientes': {
