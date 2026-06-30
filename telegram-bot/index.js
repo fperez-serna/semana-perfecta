@@ -199,10 +199,13 @@ async function agregarTareaWP(texto) {
 async function agregarPendienteWP(texto) {
   const fecha = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Merida' }).format(new Date());
   const id = 't' + Date.now();
-  const doc = await wpUser().doc('pending_tasks').get();
-  const tasks = doc.exists ? (doc.data().tasks || []) : [];
-  tasks.push({ id, text: texto, addedDate: fecha });
-  await wpUser().doc('pending_tasks').set({ tasks });
+  const ref = wpUser().doc('pending_tasks');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const tasks = doc.exists ? (doc.data().tasks || []) : [];
+    tasks.push({ id, text: texto, addedDate: fecha });
+    t.set(ref, { tasks });
+  });
 }
 
 async function getListaSuperWP() {
@@ -291,11 +294,13 @@ async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const focusDia = data.focus?.[wpDay] || {};
-  const nextSlot = Object.keys(focusDia).length;
+  const nextSlot = [1, 2, 3].find(n => !focusDia[n]);
+  if (!nextSlot) return false;
   await wpUser().doc(weekId).set(
     { focus: { [wpDay]: { ...focusDia, [nextSlot]: texto } } },
     { merge: true }
   );
+  return true;
 }
 
 async function tacharItemSuperWP(itemTexto, catIndex) {
@@ -396,7 +401,7 @@ const TOOLS = [
   },
   {
     name: 'agregar_enfoque_dia',
-    description: 'Agrega un enfoque/tarea al bloque de enfoque del día en el Weekly Planner de Fernanda.',
+    description: 'Agrega un enfoque/tarea al bloque de enfoque del día en el Weekly Planner de Fernanda. Solo hay 3 espacios de enfoque por día — si ya están llenos, dile a Fernanda y pregúntale si reemplaza uno.',
     input_schema: {
       type: 'object',
       properties: {
@@ -490,7 +495,8 @@ async function ejecutarHerramienta(nombre, input) {
 
     case 'agregar_enfoque_dia': {
       const dia = typeof input.dia === 'number' ? input.dia : null;
-      await agregarEnfoqueDiaWP(input.texto, dia);
+      const agregado = await agregarEnfoqueDiaWP(input.texto, dia);
+      if (!agregado) return { resultado: 'Ya hay 3 enfoques agregados para ese día (es el máximo). Pregúntale a Fernanda si quiere reemplazar alguno.', etiqueta: null };
       return { resultado: `Enfoque agregado: "${input.texto}"`, etiqueta: 'enfoque del día agregado ✓' };
     }
 
