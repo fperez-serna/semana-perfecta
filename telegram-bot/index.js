@@ -488,7 +488,7 @@ const TOOLS = [
   },
   {
     name: 'ver_ciclo_luna',
-    description: 'Calcula el día actual del ciclo menstrual de Fernanda, la fase hormonal aproximada (Menstrual/Folicular/Ovulación/Lútea) y la fase lunar de hoy. OBLIGATORIO: úsala siempre que pregunte en qué día de su ciclo va, su fase hormonal, o la fase de la luna — nunca lo respondas sin llamar esta herramienta primero.',
+    description: 'Calcula el día actual del ciclo menstrual de Fernanda, la fase hormonal aproximada (Menstrual/Folicular/Ovulación/Lútea), la fase lunar de hoy, y trae sus notas personales guardadas sobre cómo vive cada fase. OBLIGATORIO: úsala siempre que pregunte en qué día de su ciclo va, su fase hormonal, o la fase de la luna — nunca lo respondas sin llamar esta herramienta primero. Si hay notas personales guardadas, básate en ellas (no en generalidades de libro de texto) para comentar cómo podría sentirse o qué le conviene hoy.',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
@@ -500,6 +500,17 @@ const TOOLS = [
         fecha: { type: 'string', description: 'Fecha en formato YYYY-MM-DD si mencionó una fecha distinta a hoy. Omitir para usar hoy.' },
       },
       required: [],
+    },
+  },
+  {
+    name: 'actualizar_notas_ciclo',
+    description: 'Guarda o actualiza las notas personales de Fernanda sobre cómo vive su ciclo (síntomas, energía, antojos, estado de ánimo típico por fase, qué le ayuda). Estas notas reemplazan las que había antes — si quiere agregar algo a lo ya guardado, primero llama ver_ciclo_luna para ver las notas actuales y manda el texto combinado. Úsala cuando te describa patrones de su ciclo o te pida explícitamente guardar/actualizar esa información.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        notas: { type: 'string', description: 'Texto completo de las notas personales sobre su ciclo' },
+      },
+      required: ['notas'],
     },
   },
   {
@@ -633,16 +644,22 @@ async function ejecutarHerramienta(nombre, input) {
     case 'ver_ciclo_luna': {
       const ciclo = await getCiclo();
       const luna = faseLunar();
+      const notas = ciclo?.notasPersonales ? `\nNotas personales de Fernanda sobre su ciclo: ${ciclo.notasPersonales}` : '\nNo hay notas personales guardadas todavía.';
       if (!ciclo || !ciclo.ultimoInicio) {
-        return { resultado: `Fase lunar de hoy: ${luna}. No tengo registrado el inicio de su último periodo, así que no puedo calcular el día del ciclo.`, etiqueta: null };
+        return { resultado: `Fase lunar de hoy: ${luna}. No tengo registrado el inicio de su último periodo, así que no puedo calcular el día del ciclo.${notas}`, etiqueta: null };
       }
       const { diaCiclo, fase } = calcularCiclo(ciclo.ultimoInicio, ciclo.duracionPromedio);
-      return { resultado: `Día ${diaCiclo} del ciclo, fase ${fase}. Fase lunar de hoy: ${luna}.`, etiqueta: null };
+      return { resultado: `Día ${diaCiclo} del ciclo, fase ${fase}. Fase lunar de hoy: ${luna}.${notas}`, etiqueta: null };
     }
 
     case 'registrar_inicio_periodo': {
       const fecha = await registrarInicioPeriodoWP(input.fecha || null);
       return { resultado: `Periodo registrado, inicio: ${fecha}.`, etiqueta: 'inicio de periodo registrado ✓' };
+    }
+
+    case 'actualizar_notas_ciclo': {
+      await wpUser().doc('ciclo').set({ notasPersonales: input.notas }, { merge: true });
+      return { resultado: 'Notas del ciclo actualizadas.', etiqueta: 'notas del ciclo guardadas ✓' };
     }
 
     case 'ver_pendientes': {
