@@ -1047,10 +1047,7 @@ bot.on('callback_query', async (query) => {
 
 // === MENSAJES LIBRES ===
 
-bot.on('message', async (msg) => {
-  if (!msg.text || msg.text.startsWith('/')) return;
-  const chatId = msg.chat.id;
-  const texto = msg.text;
+async function procesarTexto(chatId, texto) {
   const estado = userState[chatId] || {};
 
   try {
@@ -1150,6 +1147,55 @@ bot.on('message', async (msg) => {
   } catch (e) {
     console.error('Error procesando mensaje:', e);
     await bot.sendMessage(chatId, 'Algo salió mal. Intenta de nuevo.');
+  }
+}
+
+bot.on('message', async (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) return;
+  await procesarTexto(msg.chat.id, msg.text);
+});
+
+// === NOTAS DE VOZ ===
+
+async function transcribirAudio(fileId) {
+  const fileLink = await bot.getFileLink(fileId);
+  const audioRes = await fetch(fileLink);
+  const audioBuffer = await audioRes.arrayBuffer();
+
+  const form = new FormData();
+  form.append('file', new Blob([audioBuffer], { type: 'audio/ogg' }), 'audio.ogg');
+  form.append('model', 'whisper-1');
+  form.append('language', 'es');
+
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Whisper error: ${res.status} ${err}`);
+  }
+
+  const data = await res.json();
+  return data.text;
+}
+
+bot.on('voice', async (msg) => {
+  const chatId = msg.chat.id;
+  try {
+    await bot.sendChatAction(chatId, 'typing');
+    const texto = await transcribirAudio(msg.voice.file_id);
+    if (!texto || !texto.trim()) {
+      await bot.sendMessage(chatId, 'No pude entender el audio, ¿lo escribes?');
+      return;
+    }
+    await bot.sendMessage(chatId, `🎤 _"${texto}"_`, { parse_mode: 'Markdown' });
+    await procesarTexto(chatId, texto);
+  } catch (e) {
+    console.error('Error transcribiendo audio:', e);
+    await bot.sendMessage(chatId, 'No pude procesar la nota de voz. Intenta de nuevo o escríbelo.');
   }
 });
 
