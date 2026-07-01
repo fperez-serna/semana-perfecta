@@ -199,7 +199,18 @@ async function getAvancesRecientes(limite = 10) {
 
 // === HELPERS — WEEKLY PLANNER ===
 
-const SHOP_CATS = ['Supermercado', 'Casa', 'Personal', 'Oficina'];
+let SHOP_CATS = ['Mercado', 'Supermercado', 'Personal Fer', 'Personal Cris'];
+
+async function getShopCats() {
+  try {
+    const doc = await wpUser().doc('config').get();
+    const cats = doc.exists ? doc.data()?.cfg?.shopCats : null;
+    if (cats && cats.length > 0) SHOP_CATS = cats;
+  } catch {}
+  return SHOP_CATS;
+}
+// Sincronizar al arrancar
+getShopCats();
 
 function getWeekId() {
   const today = new Date();
@@ -537,7 +548,7 @@ const TOOLS = [
   },
   {
     name: 'agregar_lista_super',
-    description: 'Agrega MÚLTIPLES items a la lista del súper en una sola llamada. Úsala siempre que necesites agregar una lista de ingredientes o compras (ej. basada en un menú semanal). Mucho más eficiente que llamar agregar_item_super varias veces.',
+    description: 'Agrega MÚLTIPLES items a la lista del súper en una sola llamada. Úsala siempre que necesites agregar una lista de ingredientes o compras (ej. basada en un menú semanal). Regla de categorías: frutas y verduras frescas → "Mercado"; lácteos, proteínas, granos, enlatados, limpieza y todo lo demás → "Supermercado". "Personal Fer" y "Personal Cris" solo para artículos de uso personal.',
     input_schema: {
       type: 'object',
       properties: {
