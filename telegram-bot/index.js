@@ -843,10 +843,9 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 600,
-        system: [{ type: 'text', text: systemFinal, cache_control: { type: 'ephemeral' } }],
+        system: systemFinal,
         tools: TOOLS,
         messages,
-        betas: ['prompt-caching-2024-07-31'],
       });
 
       const textBlock = response.content.find(b => b.type === 'text');
@@ -1498,7 +1497,7 @@ async function generarMensajeAutomatico(instruccion) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 800,
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
         content: `Hoy es ${diaHoy} ${fecha}.\n${ctx}\n\n${instruccion}`,
