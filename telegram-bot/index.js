@@ -525,7 +525,7 @@ const TOOLS = [
   },
   {
     name: 'agregar_item_super',
-    description: 'Agrega un item a la lista del súper de Fernanda.',
+    description: 'Agrega UN solo item a la lista del súper. Si necesitas agregar varios items (ej. una lista de compras basada en un menú), usa agregar_lista_super en su lugar — es una sola llamada para todos.',
     input_schema: {
       type: 'object',
       properties: {
@@ -533,6 +533,28 @@ const TOOLS = [
         categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría de la lista del súper' },
       },
       required: ['item', 'categoria'],
+    },
+  },
+  {
+    name: 'agregar_lista_super',
+    description: 'Agrega MÚLTIPLES items a la lista del súper en una sola llamada. Úsala siempre que necesites agregar una lista de ingredientes o compras (ej. basada en un menú semanal). Mucho más eficiente que llamar agregar_item_super varias veces.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          description: 'Lista de items a agregar',
+          items: {
+            type: 'object',
+            properties: {
+              item: { type: 'string', description: 'Nombre del producto' },
+              categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría' },
+            },
+            required: ['item', 'categoria'],
+          },
+        },
+      },
+      required: ['items'],
     },
   },
   {
@@ -702,6 +724,21 @@ async function ejecutarHerramienta(nombre, input) {
       return { resultado: `"${input.item}" agregado a ${SHOP_CATS[idx]}`, etiqueta: `${input.item} agregado al súper ✓` };
     }
 
+    case 'agregar_lista_super': {
+      const items = input.items || [];
+      const agregados = [];
+      for (const { item, categoria } of items) {
+        const catIdx = SHOP_CATS.findIndex(c => c.toLowerCase() === String(categoria).toLowerCase());
+        const idx = catIdx >= 0 ? catIdx : 0;
+        await agregarItemSuperWP(item, idx);
+        agregados.push(`${item} (${SHOP_CATS[idx]})`);
+      }
+      return {
+        resultado: `${agregados.length} items agregados al súper: ${agregados.join(', ')}`,
+        etiqueta: `${agregados.length} items agregados al súper ✓`,
+      };
+    }
+
     case 'guardar_avance_meta': {
       const meta = METAS.find(m => m.id === input.meta_id);
       await guardarAvance(input.meta_id, input.texto);
@@ -843,7 +880,7 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
     ];
 
     let texto = '';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1500,
