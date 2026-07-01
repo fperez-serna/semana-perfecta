@@ -266,15 +266,9 @@ async function agregarTareaWP(texto) {
 }
 
 async function agregarPendienteWP(texto) {
-  const fecha = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Merida' }).format(new Date());
-  const id = 't' + Date.now();
-  const ref = wpUser().doc('pending_tasks');
-  await wpDb.runTransaction(async t => {
-    const doc = await t.get(ref);
-    const tasks = doc.exists ? (doc.data().tasks || []) : [];
-    tasks.push({ id, text: texto, addedDate: fecha });
-    t.set(ref, { tasks });
-  });
+  // Escribe como tarea fresca del día (weekData.tasks) para que aparezca
+  // en el planner de hoy — el app la arrastrará a días siguientes si no se completa.
+  await agregarTareaWP(texto);
 }
 
 async function getListaSuperWP() {
