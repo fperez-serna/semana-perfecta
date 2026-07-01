@@ -93,9 +93,10 @@ def sincronizar():
 
 
 if __name__ == "__main__":
-    # Horarios en hora de Mérida (UTC-6)
-    for hora in ["07:30", "11:25", "14:00", "16:00", "18:00", "20:00"]:
-        schedule.every().day.at(hora, "America/Mexico_City").do(sincronizar)
+    # Horarios en UTC (Mérida = UTC-6 fijo, sin horario de verano desde 2022)
+    # 7:30 → 13:30 | 11:25 → 17:25 | 14:00 → 20:00 | 16:00 → 22:00 | 18:00 → 00:00 | 20:00 → 02:00
+    for hora_utc in ["13:30", "17:25", "20:00", "22:00", "00:00", "02:00"]:
+        schedule.every().day.at(hora_utc).do(sincronizar)
 
     print("Garmin sync scheduler activo. Horarios: 7:30, 11:25, 14:00, 16:00, 18:00, 20:00 (Mérida)", flush=True)
     sincronizar()  # sync inmediato al arrancar
