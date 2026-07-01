@@ -391,23 +391,31 @@ async function agregarGastoDia(desc, cat, monto, pagoCon) {
 }
 
 async function getPendientesWP() {
-  const doc = await wpUser().doc('pending_tasks').get();
+  const weekId = getWeekId();
+  const doc = await wpUser().doc(weekId).get();
   if (!doc.exists) return [];
-  return (doc.data().tasks || []).filter(t => !t.done);
+  return (doc.data().tasks || []).filter(t => t.doneOnDay === undefined);
 }
 
 async function completarPendienteWP(textoOId) {
-  const doc = await wpUser().doc('pending_tasks').get();
-  if (!doc.exists) return false;
-  const tasks = doc.data().tasks || [];
-  const lower = textoOId.toLowerCase();
-  const idx = tasks.findIndex(t =>
-    t.id === textoOId || t.text.toLowerCase().includes(lower)
-  );
-  if (idx < 0) return false;
-  tasks[idx] = { ...tasks[idx], done: true };
-  await wpUser().doc('pending_tasks').set({ tasks });
-  return tasks[idx].text;
+  const weekId = getWeekId();
+  const wpDay = jsToWpDay(new Date().getDay());
+  const ref = wpUser().doc(weekId);
+  let texto = null;
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    if (!doc.exists) return;
+    const tasks = [...(doc.data().tasks || [])];
+    const lower = textoOId.toLowerCase();
+    const idx = tasks.findIndex(task =>
+      task.id === textoOId || task.text.toLowerCase().includes(lower)
+    );
+    if (idx < 0) return;
+    texto = tasks[idx].text;
+    tasks[idx] = { ...tasks[idx], doneOnDay: wpDay };
+    t.set(ref, { tasks }, { merge: true });
+  });
+  return texto;
 }
 
 async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
