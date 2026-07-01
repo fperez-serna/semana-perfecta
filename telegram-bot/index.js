@@ -465,6 +465,38 @@ async function borrarEnfoqueDiaWP(texto, wpDayOverride = null) {
   return textoBorrado;
 }
 
+async function getEventosDia(wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  return (doc.exists ? (doc.data().events?.[wpDay] || []) : []);
+}
+
+async function agregarEventoWP(titulo, hora, durMins = 60, wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const data = doc.exists ? doc.data() : {};
+  const eventos = [...((data.events?.[wpDay]) || [])];
+  eventos.push({ title: titulo, time: hora, durMins });
+  await wpUser().doc(weekId).set({ events: { [wpDay]: eventos } }, { merge: true });
+}
+
+async function borrarEventoWP(texto, wpDayOverride = null) {
+  const weekId = getWeekId();
+  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const data = doc.exists ? doc.data() : {};
+  const eventos = [...((data.events?.[wpDay]) || [])];
+  const lower = texto.toLowerCase();
+  const idx = eventos.findIndex(e => e.title.toLowerCase().includes(lower));
+  if (idx < 0) return null;
+  const borrado = eventos[idx].title;
+  eventos.splice(idx, 1);
+  await wpUser().doc(weekId).set({ events: { [wpDay]: eventos } }, { merge: true });
+  return borrado;
+}
+
 async function tacharItemSuperWP(itemTexto, catIndex) {
   const cats = await getListaSuperWP();
   const key = `cat${catIndex}`;
@@ -601,6 +633,43 @@ const TOOLS = [
         pago_con: { type: 'string', description: 'Forma de pago: "Efectivo", "Débito", "Transferencia", o el nombre exacto de una tarjeta de crédito de Fernanda (disponible en contexto).' },
       },
       required: ['desc', 'cat', 'monto', 'pago_con'],
+    },
+  },
+  {
+    name: 'ver_agenda_dia',
+    description: 'Lee los eventos/citas del día en el Weekly Planner de Fernanda. OBLIGATORIO: úsala siempre que pregunte qué tiene en su agenda o qué eventos tiene hoy/mañana — nunca respondas eso sin llamar esta herramienta primero.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        dia: { type: 'number', description: 'Día de la semana (0=lunes…6=domingo). Omitir para hoy.', minimum: 0, maximum: 6 },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'agregar_evento',
+    description: 'Agrega un evento o cita a la agenda del día en el Weekly Planner. Úsala cuando Fernanda mencione una cita, reunión, compromiso o evento que quiera agendar.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string', description: 'Nombre del evento o cita' },
+        hora: { type: 'string', description: 'Hora en formato "9:30 AM" o "3:00 PM"' },
+        duracion_mins: { type: 'number', description: 'Duración en minutos (default 60)' },
+        dia: { type: 'number', description: 'Día de la semana (0=lunes…6=domingo). Omitir para hoy.', minimum: 0, maximum: 6 },
+      },
+      required: ['titulo', 'hora'],
+    },
+  },
+  {
+    name: 'borrar_evento',
+    description: 'Elimina un evento de la agenda del día en el Weekly Planner. Usa parte del título para identificarlo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string', description: 'Texto o fragmento del título del evento a borrar' },
+        dia: { type: 'number', description: 'Día de la semana (0=lunes…6=domingo). Omitir para hoy.', minimum: 0, maximum: 6 },
+      },
+      required: ['titulo'],
     },
   },
   {
@@ -769,6 +838,27 @@ async function ejecutarHerramienta(nombre, input) {
       const cat = catMatch || input.cat;
       await agregarGastoDia(input.desc, cat, input.monto, input.pago_con);
       return { resultado: `Gasto guardado: ${input.desc} — $${input.monto} (${cat}, ${input.pago_con})`, etiqueta: `$${input.monto} en ${cat} ✓` };
+    }
+
+    case 'ver_agenda_dia': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      const eventos = await getEventosDia(dia);
+      if (eventos.length === 0) return { resultado: 'No hay eventos agendados para ese día.', etiqueta: null };
+      const lista = eventos.map(e => `• ${e.time} — ${e.title}${e.durMins ? ` (${e.durMins} min)` : ''}`).join('\n');
+      return { resultado: lista, etiqueta: null };
+    }
+
+    case 'agregar_evento': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      await agregarEventoWP(input.titulo, input.hora, input.duracion_mins || 60, dia);
+      return { resultado: `Evento agregado: ${input.hora} — ${input.titulo}`, etiqueta: `${input.titulo} agendado ✓` };
+    }
+
+    case 'borrar_evento': {
+      const dia = typeof input.dia === 'number' ? input.dia : null;
+      const borrado = await borrarEventoWP(input.titulo, dia);
+      if (!borrado) return { resultado: `No encontré un evento con "${input.titulo}" en ese día.`, etiqueta: null };
+      return { resultado: `Evento eliminado: "${borrado}"`, etiqueta: `"${borrado}" eliminado de agenda ✓` };
     }
 
     case 'ver_datos_garmin': {
