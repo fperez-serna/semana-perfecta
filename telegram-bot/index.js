@@ -816,15 +816,19 @@ async function llamarClaude(userMessage, contextoExtra = '') {
 async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
   const acciones = [];
   try {
-    const [datos, historial, gastoCats, metodosPago] = await Promise.all([
+    const [datos, historial, gastoCats, metodosPago, ctxDia] = await Promise.all([
       getDatosImportantes(),
       getHistorialReciente(30),
       getGastoCats(),
       getMetodosPago(),
+      getContextoDia(),
     ]);
 
     let systemFinal = SYSTEM_PROMPT;
     systemFinal += `\n\n## Opciones para gastos del día:\n- Rubros: ${gastoCats.join(', ')}\n- Formas de pago: ${metodosPago.join(', ')}`;
+    if (ctxDia) {
+      systemFinal += `\n\n## Estado actual de Fer (datos en tiempo real):${ctxDia}`;
+    }
     if (datos.length > 0) {
       systemFinal += '\n\n## Lo que recuerdas de Fernanda (datos importantes guardados):\n'
         + datos.map(d => `- ${d.texto}`).join('\n');
