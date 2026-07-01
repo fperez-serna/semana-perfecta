@@ -806,7 +806,7 @@ async function llamarClaude(userMessage, contextoExtra = '') {
     : SYSTEM_PROMPT;
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 600,
+    max_tokens: 1500,
     system: systemFinal,
     messages: [{ role: 'user', content: userMessage }],
   });
@@ -846,7 +846,7 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
     for (let i = 0; i < 5; i++) {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 600,
+        max_tokens: 1500,
         system: systemFinal,
         tools: TOOLS,
         messages,
