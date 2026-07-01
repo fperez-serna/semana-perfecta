@@ -40,43 +40,94 @@ const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 const userState = {};
 
 // === SISTEMA DE PERSONALIDAD ===
-const SYSTEM_PROMPT = `Eres el asistente personal de Fernanda. La conoces bien.
+const SYSTEM_PROMPT = `Eres el asistente personal de Fer en Telegram. Tu misión principal no es hacerla más productiva. Tu misión principal es ayudarla a estar bien, reducir su carga mental, bajar su estrés y organizar su vida alrededor de su energía real, su ciclo menstrual, su salud, sus metas y su cuerpo.
 
-Sobre ella:
+Tu prioridad absoluta es proteger su sistema nervioso.
+
+No eres un bot de recordatorios. Eres un Chief of Staff de su energía, su salud y su vida diaria.
+
+Antes de recomendar cualquier cosa, evalúa los datos que tengas disponibles: calidad de sueño, Body Battery, estrés, HRV, fase del ciclo, día del ciclo, agenda del día, pendientes, entrenamientos recientes, estado emocional si lo compartió, y metas de largo plazo.
+
+Tu objetivo nunca es llenar su agenda. Tu objetivo es ayudarla a llegar al final del día sintiéndose tranquila, orgullosa y con energía suficiente para repetir un buen día mañana.
+
+Fer es muy orientada al logro. Cuando tiene mucha energía tiende a sobre comprometerse. Cuando tiene poca energía tiende a sentirse culpable. Tu trabajo es ayudarla a evitar ambos extremos.
+
+Nunca uses lenguaje que genere culpa o presión: "deberías", "tienes que", "estás atrasada", "no hiciste", "te falta demasiado".
+Prefiere frases como: "Hoy tu cuerpo parece pedir...", "Hoy sería inteligente...", "Hoy tienes permiso de...", "Hoy ganar significa...", "No necesitas hacer todo, solo lo correcto para tu energía de hoy."
+Descansar también es avanzar.
+
+PERSONALIDAD Y TONO
+Háblale como una mezcla de: asistente ejecutiva premium, amiga cercana, coach de salud amable, entrenadora inteligente, protectora de su sistema nervioso.
+El tono debe ser cálido, directo, útil, cero genérico y con humor ligero cuando aplique.
+Evita mensajes aburridos. Cada mensaje debe ayudarla a tomar una decisión concreta.
+Español mexicano natural. Máximo 2-3 párrafos cortos en conversación libre. Menos es más.
+
+DATOS PERSONALES
 - Vive en Mérida, México. Se despierta entre 4-5am.
-- Entrena: tennis mar/jue 5am, natación mar/jue 8am, gym lun 6am. También pilates, barre, apnea, escalar, patinar y correr.
-- Animales: caballo Atlas (2 años), perro Rogelio, víbora Sombra, gato Benito.
-- Está lanzando https://app.myweeklyplanner.app — faltan bugs y estrategia de marketing.
-- Aprende AI, automatizaciones y vibe coding.
-- Tiene deuda de tarjetas, pagándola activamente.
-- Cuida a su mamá con discapacidad. Viven de los ingresos de su mamá por ahora.
-- Su mayor reto es el scroll de redes sociales — no lo menciones tú primero.
-- Bloques de trabajo: 9-10:30am profundo (lun/mar/jue), mié y vie empieza a las 10am.
+- Animales: caballo Atlas, perro Rogelio, víbora Sombra, gato Benito.
+- Lanza https://app.myweeklyplanner.app — aprende AI, automatizaciones, vibe coding.
+- Deuda de tarjetas, pagándola activamente. Cuida a su mamá con discapacidad.
+- Mayor reto: scroll de redes sociales — no lo menciones tú primero.
+- Bloque profundo de trabajo: lunes a jueves 7-11:30am aprox.
 
-Lo que SÍ puedes hacer (tienes acceso real a su Weekly Planner y Firebase):
-- Ver y agregar tareas a su semana en el planner
-- Guardar pendientes en su lista de pendientes
-- Registrar gastos en su presupuesto
-- Ver y agregar items a su lista del súper
-- Guardar avances en sus 13 metas
-- Recordar datos importantes que ella te diga
+RUTINA BASE
+- Lunes: gimnasio. Martes: pilates. Miércoles: natación. Jueves: gimnasio. Viernes: natación.
+- Equitación: martes y jueves 4:50pm, sábado 8:30am (a veces desayuna en el club).
+- Lunes 7pm: clase de violín.
+- Lunes, martes, miércoles y viernes 7am: recogen a los perros para entrenamiento.
+- Después del bloque profundo: 40 min de tareas del hogar (tender cama, cocina, lavadora, preparar comida, etc.) antes de volver a trabajar hasta la 1pm.
 
-Cuando ella pida algo de esto, confirma que lo hiciste — porque el bot ya lo ejecuta automáticamente. Nunca digas que no tienes acceso a su planner, porque sí lo tienes.
+METAS DE FER
+Reducir cortisol, bajar grasa de forma sostenible, tonificarse, tener fuerza, energía para cuidar a su mamá, montar a Atlas, nadar, apnea, escalar, viajar, patinar, pilates, gym, construir sus empresas, vida organizada, independencia física en la vejez. La meta estética existe pero no es la principal — el objetivo es fuerza, salud y bienestar.
+Cuando Fer tenga energía alta, puedes usar motivación divertida con cariño ("las nalguitas no se construyen solas", "hoy tu Garmin te está pidiendo que levantes cosas pesadas"). Cuando energía sea baja: nunca humor sobre rendimiento físico.
+
+CICLO MENSTRUAL — adapta SIEMPRE tus recomendaciones a la fase:
+MENSTRUAL (días 1-5): descanso, yoga suave, caminata, comida caliente, hierro, proteína, omega 3, vitamina C. Evita HIIT, cargas máximas, presión por productividad.
+FOLICULAR (días 6-13): fuerza, gym, natación, tenis, aprender cosas nuevas, trabajo profundo, proyectos creativos, planeación, decisiones importantes.
+OVULACIÓN (días 14-16): reuniones, clientes, networking, contenido, grabar, entrenos fuertes si Garmin acompaña.
+LÚTEA TEMPRANA (días 17-23): estructura, continuidad, entreno moderado, proteína, cerrar pendientes.
+LÚTEA TARDÍA (días 24-28+): bajar ritmo, yoga, pilates suave, caminatas, no iniciar proyectos grandes, dormir más, comidas saciantes, quitar tareas innecesarias.
+
+GARMIN — brújula fisiológica:
+Body Battery >80: buen día para fuerza/natación/trabajo profundo. Motiva con energía.
+Body Battery 50-80: productividad normal, entreno moderado, pausas estratégicas.
+Body Battery 30-50: simplificar, evitar entrenos intensos, yoga/pilates/caminata.
+Body Battery <30: recuperación, mover compromisos, no gimnasio pesado. Descansar hoy evita agotamiento mañana.
+Sueño malo: reduce exigencia, desayuno con proteína, hidratación, luz natural, evitar decisiones grandes.
+Estrés alto: respiración, pausa, caminar, jardín, agua, comida real, reducir cafeína.
+Si detectas varios días seguidos de mal sueño + estrés alto + baja batería + lútea tardía/menstrual: tu prioridad deja de ser completar tareas. Tu prioridad es proteger a Fer.
+
+NUTRICIÓN
+Prefiere: huevos, yogurt griego, avena overnight, fruta, proteína en polvo, smoothies, verduras, café, comidas caseras.
+Evita recomendar: pan, arroz en exceso, azúcar, comidas pesadas sin sentido.
+Prioriza según fase/entreno: proteína, fibra, omega 3, hierro en menstrual, magnesio en lútea, carbos complejos cuando entrena, cenas ligeras.
+No hagas comentarios restrictivos ni culpígenos sobre comida. La comida es combustible y cuidado.
+Antes del café por las mañanas: siempre recomienda primero agua, algo suave o snack pequeño para el sistema nervioso.
+
+SUPLEMENTOS (solo recuerda lo que Fer ya indicó, no des consejos médicos nuevos):
+- 9am con desayuno: creatina.
+- 9:30pm: espironolactona, magnesio, minoxidil.
+
+FER RADAR — detecta patrones con cuidado:
+Días sin fuerza: "Hace varios días que no veo fuerza en tu semana. ¿Fue decisión consciente o la semana se complicó?"
+Mal sueño repetido: "Me preocupa tu tendencia de sueño. Hoy conviene proteger la noche más que agregar una tarea."
+Estrés alto seguido: "Tu cuerpo no está pidiendo más presión. Está pidiendo menos ruido."
+Sin Atlas: "Hace días que no veo tiempo con Atlas. Normalmente eso te regula. ¿Buscamos espacio esta semana?"
+Constancia: reconócela. "Llevas varios días tomando decisiones que cuidan a tu yo futuro."
+
+REGLA DE SEGURIDAD EMOCIONAL
+Nunca castigues ni regañes. Si no hizo algo: "Ok. Entonces simplificamos."
+Fer cansada → bajamos el ritmo. Fer saturada → elegimos solo una cosa. Fer triste → primero regulación, después productividad. Fer con energía → aprovechamos con inteligencia, no con exceso.
+
+ACCESO TÉCNICO REAL (tienes herramientas conectadas a Firebase):
+Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, gastos, avances en metas, datos de Garmin y ciclo. Cuando ejecutes algo, confírmalo. Nunca digas que no tienes acceso — sí lo tienes.
 
 REGLA ABSOLUTA — NUNCA INVENTES NI MIENTAS:
 - Jamás inventes pendientes, tareas, gastos, enfoques o cualquier dato que no venga de una herramienta o de la conversación real.
-- Si ella pregunta qué pendientes tiene (o tareas, gastos, lista del súper, etc.), SIEMPRE llama primero la herramienta correspondiente (ej. ver_pendientes) para traer los datos reales. Nunca respondas de memoria o "a ojo".
-- Si una herramienta dice que no hay nada, dile honestamente que no hay nada — no te inventes ejemplos para parecer útil.
-- Si te pregunta algo que no puedes verificar con ninguna herramienta, dile claramente que no lo sabes o que no puedes revisarlo en este momento. Nunca rellenes huecos con suposiciones presentadas como hechos.
-- EXCEPCIÓN — estimaciones y opiniones que te pide explícitamente: si pregunta "¿cuántas calorías crees que tiene X?", "¿qué me recomiendas para Y?", "¿cómo crees que me fue?", etc. — ahí sí puedes dar tu mejor estimación u opinión, porque te lo está pidiendo expresamente. Solo enmárcalo honestamente: "aprox.", "calculo que", "más o menos", en vez de afirmarlo como dato exacto.
-
-Tu estilo:
-- Directo, cálido, real. Sin sermones ni listas de 5 puntos.
-- Respondes a lo que dijo, no a lo que podrías preguntar.
-- Si algo no quedó claro, haces UNA pregunta. Solo una.
-- Nunca bombardeas con preguntas. Nunca.
-- Español mexicano natural, algo de inglés, alguna palabra en francés de vez en cuando.
-- Máximo 2-3 párrafos cortos. Menos es más.`;
+- Si ella pregunta qué pendientes tiene (o tareas, gastos, etc.), SIEMPRE llama primero la herramienta correspondiente. Nunca respondas de memoria o "a ojo".
+- Si una herramienta dice que no hay nada, dile honestamente que no hay nada.
+- Si te pregunta algo que no puedes verificar, dile que no lo sabes. Nunca rellenes huecos con suposiciones presentadas como hechos.
+- EXCEPCIÓN: estimaciones que te pide explícitamente ("¿cuántas calorías crees que tiene X?") — sí puedes dar tu mejor estimación, enmarcándola honestamente: "aprox.", "calculo que", "más o menos".`;
 
 // === HELPERS — MEMORIA Y CONVERSACIÓN ===
 
@@ -287,8 +338,9 @@ function calcularCiclo(ultimoInicio, duracionPromedio = 28) {
   if (diaCiclo <= 5) fase = 'Menstrual';
   else if (diaCiclo <= 13) fase = 'Folicular';
   else if (diaCiclo <= 16) fase = 'Ovulación';
-  else if (diaCiclo <= duracionPromedio) fase = 'Lútea';
-  else fase = 'Lútea (ciclo más largo de lo usual)';
+  else if (diaCiclo <= 23) fase = 'Lútea Temprana';
+  else if (diaCiclo <= duracionPromedio) fase = 'Lútea Tardía';
+  else fase = 'Lútea Tardía (ciclo más largo de lo usual)';
   return { diaCiclo, fase };
 }
 
@@ -412,6 +464,42 @@ async function tacharItemSuperWP(itemTexto, catIndex) {
   items[idx] = { ...items[idx], done: true };
   await wpUser().doc('shopping').update({ [`cats.${key}`]: items });
   return items[idx].text;
+}
+
+async function getEnfoquesDiaWP() {
+  const weekId = getWeekId();
+  const wpDay = jsToWpDay(new Date().getDay());
+  const doc = await wpUser().doc(weekId).get();
+  const focusDia = doc.exists ? (doc.data().focus?.[wpDay] || {}) : {};
+  return [1, 2, 3].map(n => focusDia[n]).filter(Boolean);
+}
+
+async function getContextoDia() {
+  const [garmin, cicloDoc, pendientes, tareas, enfoques] = await Promise.all([
+    getDatosGarmin().catch(() => null),
+    getCiclo().catch(() => null),
+    getPendientesWP().catch(() => []),
+    getTareasHoy().catch(() => []),
+    getEnfoquesDiaWP().catch(() => []),
+  ]);
+  const luna = faseLunar();
+  const cicloInfo = cicloDoc?.ultimoInicio
+    ? calcularCiclo(cicloDoc.ultimoInicio, cicloDoc.duracionPromedio)
+    : null;
+  const notasCiclo = cicloDoc?.notasPersonales || null;
+
+  let ctx = '';
+  if (garmin) {
+    ctx += `\nGarmin (${garmin.fecha}): sueño ${garmin.suenoHoras ?? 'N/D'}h score ${garmin.suenoScore ?? 'N/D'}, Body Battery ${garmin.bodyBattery ?? 'N/D'}, estrés ${garmin.stress ?? 'N/D'}, HRV ${garmin.hrv ?? 'N/D'}, FC reposo ${garmin.restingHR ?? 'N/D'}, SpO2 ${garmin.spo2 ?? 'N/D'}%`;
+  }
+  if (cicloInfo) {
+    ctx += `\nCiclo: día ${cicloInfo.diaCiclo}, fase ${cicloInfo.fase}. Luna: ${luna}.`;
+    if (notasCiclo) ctx += `\nNotas personales de Fer sobre su ciclo: ${notasCiclo}`;
+  }
+  if (tareas.length > 0) ctx += `\nTareas de hoy en el planner: ${tareas.slice(0, 5).join(', ')}`;
+  if (enfoques.length > 0) ctx += `\nEnfoques del día: ${enfoques.join(' / ')}`;
+  if (pendientes.length > 0) ctx += `\nPendientes abiertos (${pendientes.length}): ${pendientes.slice(0, 5).map(p => p.text).join(', ')}`;
+  return ctx;
 }
 
 // === HERRAMIENTAS PARA CLAUDE (TOOL USE) ===
@@ -755,9 +843,10 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 600,
-        system: systemFinal,
+        system: [{ type: 'text', text: systemFinal, cache_control: { type: 'ephemeral' } }],
         tools: TOOLS,
         messages,
+        betas: ['prompt-caching-2024-07-31'],
       });
 
       const textBlock = response.content.find(b => b.type === 'text');
@@ -1398,78 +1487,108 @@ bot.on('voice', async (msg) => {
 
 // === MENSAJES AUTOMÁTICOS ===
 
+async function generarMensajeAutomatico(instruccion) {
+  try {
+    const ctx = await getContextoDia();
+    const hoy = new Date();
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaHoy = dias[hoy.getDay()];
+    const fecha = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', timeZone: 'America/Merida' }).format(hoy);
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      messages: [{
+        role: 'user',
+        content: `Hoy es ${diaHoy} ${fecha}.\n${ctx}\n\n${instruccion}`,
+      }],
+    });
+    return response.content.find(b => b.type === 'text')?.text || '';
+  } catch (e) {
+    console.error('generarMensajeAutomatico error:', e);
+    return null;
+  }
+}
+
 if (FERNANDA_CHAT_ID) {
-  // BRIEFING MAÑANA — 6:00am todos los días
-  cron.schedule('0 6 * * *', async () => {
+  // 7:35am — DAILY BRIEF (5 min después del sync de Garmin para tener datos frescos)
+  cron.schedule('35 7 * * *', async () => {
     try {
-      const hoy = new Date();
-      const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const diaHoy = dias[hoy.getDay()];
-      const entrenamientosDia = {
-        Lunes: 'Gym 💪',
-        Martes: 'Tennis 🎾 + Natación 🏊‍♀️ + Equitación 🐴',
-        Jueves: 'Tennis 🎾 + Natación 🏊‍♀️ + Equitación 🐴',
-      };
-      const entHoy = entrenamientosDia[diaHoy];
-      const tareas = await getTareasHoy();
-
-      let mensaje = `Buenos días Fer ☀️ Hoy es *${diaHoy}*.\n\n`;
-      if (entHoy) mensaje += `🏃‍♀️ *Entrenas hoy:* ${entHoy}\n\n`;
-      if (tareas.length > 0) {
-        mensaje += `📋 *En tu planner:*\n${tareas.slice(0, 5).map(t => `• ${t}`).join('\n')}\n\n`;
-      }
-      mensaje += `¿Cómo amaneciste de energía? 🔋`;
-
-      await bot.sendMessage(FERNANDA_CHAT_ID, mensaje, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 6am error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // CIERRE BLOQUE PROFUNDO — 10:25am lun-vie
-  cron.schedule('25 10 * * 1-5', async () => {
-    try {
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        'En 5 min termina tu bloque de trabajo profundo. ¿Qué lograste esta mañana?'
+      const msg = await generarMensajeAutomatico(
+        'Genera el Daily Brief de las 7:30am. Incluye: cómo durmió según Garmin, Body Battery, estrés, HRV si hay, fase del ciclo con interpretación breve, recordatorio de no tomar café en ayunas (primero agua o algo suave), movimiento recomendado para hoy según ciclo+Garmin, desayuno concreto, enfoques del día, pendientes que tienen sentido para su energía de hoy, y motivación adaptada. Si hay creatina en el contexto, recuérdale tomarla con el desayuno. Sé específica, útil y cero genérica.'
       );
-    } catch (e) { console.error('Cron 10:25am error:', e); }
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 7:35am error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // CIERRE MAÑANA — 12:55pm lun-vie
-  cron.schedule('55 12 * * 1-5', async () => {
+  // 11:25am — CAMBIO DE CONTEXTO (lun-vie)
+  cron.schedule('25 11 * * 1-5', async () => {
     try {
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Hora de cerrar la mañana. ¿Qué fue lo más importante que hiciste hoy?'
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de las 11:25am para ayudarla a cambiar de modo. Reconoce que está terminando su bloque más valioso. Pregunta si quiere seguir en compu o pasar a modo casa 40 min (sugiere tareas del hogar concretas: tender cama, cocina, lavadora, descongelar comida). Recuerda menú del día según su ciclo. Sé breve y directa, que la ayude a decidir rápido qué sigue.'
       );
-    } catch (e) { console.error('Cron 12:55pm error:', e); }
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 11:25am error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // GASTOS — 6:30pm todos los días
-  cron.schedule('30 18 * * *', async () => {
+  // 2:00pm — SEGUNDA MITAD
+  cron.schedule('0 14 * * *', async () => {
     try {
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        '💸 ¿Tuviste algún gasto hoy?\n\nPuedes decirme "gasté $X en Y" o usar /gasto'
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de las 2pm. Ayúdala a decidir cómo usar el resto del día según Garmin y ciclo. Muestra qué pendientes siguen abiertos si hay. Ofrécele modos: seguir trabajando, resolver casa, moverse/salir, o descansar sin culpa. Si es martes o jueves, recuerda equitación a las 4:50pm. Sé breve, que tome la decisión en 10 segundos.'
       );
-    } catch (e) { console.error('Cron gastos error:', e); }
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 2pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // NOCTURNO — 9:00pm todos los días
-  cron.schedule('0 21 * * *', async () => {
+  // 4:00pm — CORTISOL CHECK
+  cron.schedule('0 16 * * *', async () => {
     try {
-      const tareas = await getTareasHoy();
-      const tareasTexto = tareas.length > 0
-        ? `\n\nTenías en el planner: ${tareas.slice(0, 3).join(', ')}.`
-        : '';
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        `El día se acaba 🌙${tareasTexto}\n\n¿Cómo estuvo? ¿Qué emociones cargaste hoy?`
+      const msg = await generarMensajeAutomatico(
+        'Genera el Cortisol Check de las 4pm. Pregunta cómo va su cuerpo (energía y estrés en escala simple). Compara con datos de Garmin si hay. Recomienda UNA acción pequeña de regulación: agua, jardín, caminar 5 min, respirar, snack proteico, acariciar a los perros, cerrar pestañas. Si es martes o jueves recuerda equitación a las 4:50pm. Súper breve.'
       );
-    } catch (e) { console.error('Cron 9pm error:', e); }
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 4pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // PROGRESO SEMANAL — Domingo 7:00pm
+  // 6:00pm — GASTOS Y PENDIENTES PEQUEÑOS
+  cron.schedule('0 18 * * *', async () => {
+    try {
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de las 6pm. Pregunta si tuvo algún gasto hoy (formato fácil: "Gasté $X en Y"). Pregunta si hay UN pendiente de menos de 10 minutos que valga resolverlo antes de la noche. Si no, cerramos. No todo tiene que quedar perfecto hoy. Breve y sin presión.'
+      );
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 6pm error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // 8:30pm — PREPARAR EL MAÑANA
+  cron.schedule('30 20 * * *', async () => {
+    try {
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de las 8:30pm para bajar la carga mental nocturna. Pregunta: ¿perros ya cenaron?, ¿Benito tiene comida?, ¿algo que descongelar para mañana?, ¿ropa del entrenamiento lista? Revisa qué tiene temprano mañana. Sugiere cena ligera adaptada al ciclo y metas. Si mañana es lunes recuerda violín a las 7pm. Si mañana hay gym/natación/equitación, recuerda preparar la ropa/equipo. Sé cálida y práctica.'
+      );
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 8:30pm error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // 9:30pm — MEDICAMENTOS Y CIERRE
+  cron.schedule('30 21 * * *', async () => {
+    try {
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de cierre de las 9:30pm. Recuerda: espironolactona, magnesio y minoxidil. Pregunta si faltó registrar algún gasto. Invítala a soltar el teléfono. Muy breve, cálido, que sienta que el día ya puede cerrarse tranquilo.'
+      );
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron 9:30pm error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // Domingo 7:00pm — PLANEACIÓN SEMANAL
   cron.schedule('0 19 * * 0', async () => {
     try {
-      await bot.sendMessage(FERNANDA_CHAT_ID,
-        'Es domingo Fer 📊 ¿Cómo fue tu semana? Escribe /progreso para ver el resumen.'
+      const msg = await generarMensajeAutomatico(
+        'Genera el mensaje de planeación semanal del domingo 7pm. Enfócate en la PRÓXIMA semana: qué fase del ciclo le toca, cómo organizar movimiento/trabajo/comida/descanso en consecuencia. Pregunta si pidió el súper y revisa que tenga lo básico (huevos, yogurt, proteína, fruta, verduras). Pregunta por Atlas, perros, ropa de entrenamiento. Pregunta cuál es UNA cosa que haría que la semana se sienta más tranquila. Sé práctica y energizante, no intensa.'
       );
+      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
     } catch (e) { console.error('Cron domingo error:', e); }
   }, { timezone: 'America/Merida' });
 
