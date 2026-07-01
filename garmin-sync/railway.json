@@ -5,7 +5,6 @@
   },
   "deploy": {
     "startCommand": "python sync_garmin.py",
-    "cronSchedule": "0 13 * * *",
-    "restartPolicyType": "NEVER"
+    "restartPolicyType": "ON_FAILURE"
   }
 }
