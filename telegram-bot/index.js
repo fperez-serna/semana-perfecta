@@ -127,7 +127,8 @@ REGLA ABSOLUTA — NUNCA INVENTES NI MIENTAS:
 - Si ella pregunta qué pendientes tiene (o tareas, gastos, etc.), SIEMPRE llama primero la herramienta correspondiente. Nunca respondas de memoria o "a ojo".
 - Si una herramienta dice que no hay nada, dile honestamente que no hay nada.
 - Si te pregunta algo que no puedes verificar, dile que no lo sabes. Nunca rellenes huecos con suposiciones presentadas como hechos.
-- EXCEPCIÓN: estimaciones que te pide explícitamente ("¿cuántas calorías crees que tiene X?") — sí puedes dar tu mejor estimación, enmarcándola honestamente: "aprox.", "calculo que", "más o menos".`;
+- EXCEPCIÓN: estimaciones que te pide explícitamente ("¿cuántas calorías crees que tiene X?") — sí puedes dar tu mejor estimación, enmarcándola honestamente: "aprox.", "calculo que", "más o menos".
+- ANTI-DUPLICADOS: si ya confirmaste en este mismo hilo que ejecutaste una acción (agregaste tarea, pendiente, gasto, evento, etc.), NO la ejecutes de nuevo aunque Fernanda pregunte "¿lo hiciste?" o "¿quedó?". Responde que sí quedó guardado. Solo ejecuta una herramienta si es una solicitud nueva o si ella pide explícitamente repetirla.`;
 
 // === HELPERS — MEMORIA Y CONVERSACIÓN ===
 
@@ -213,7 +214,8 @@ async function getShopCats() {
 getShopCats();
 
 function getWeekId() {
-  const today = new Date();
+  const fechaHoy = fechaLocalHoy(); // 'YYYY-MM-DD' en Mérida
+  const today = new Date(fechaHoy + 'T12:00:00');
   const day = today.getDay();
   const diff = today.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(today);
@@ -231,13 +233,20 @@ function jsToWpDay(jsDay) {
   return jsDay === 0 ? 6 : jsDay - 1;
 }
 
+function wpDayHoy() {
+  // Obtiene el día de la semana en Mérida (no UTC del servidor Railway)
+  const fecha = fechaLocalHoy(); // 'YYYY-MM-DD' en America/Merida
+  const jsDay = new Date(fecha + 'T12:00:00').getDay();
+  return jsToWpDay(jsDay);
+}
+
 async function getTareasHoy() {
   try {
     const weekId = getWeekId();
     const doc = await wpUser().doc(weekId).get();
     if (!doc.exists) return [];
     const data = doc.data();
-    const wpDay = jsToWpDay(new Date().getDay());
+    const wpDay = wpDayHoy();
 
     const tareas = [];
     const focus = data.focus?.[wpDay] || {};
@@ -255,7 +264,7 @@ async function getTareasHoy() {
 
 async function agregarTareaWP(texto) {
   const weekId = getWeekId();
-  const wpDay = jsToWpDay(new Date().getDay());
+  const wpDay = wpDayHoy();
   await wpUser().doc(weekId).set({
     tasks: admin.firestore.FieldValue.arrayUnion({
       id: 't' + Date.now(),
@@ -382,7 +391,7 @@ async function getMetodosPago() {
 
 async function agregarGastoDia(desc, cat, monto, pagoCon) {
   const weekId = getWeekId();
-  const wpDay = jsToWpDay(new Date().getDay());
+  const wpDay = wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const gastos = (doc.exists ? doc.data().gastos : null) || {};
   if (!gastos[wpDay]) gastos[wpDay] = [];
@@ -399,7 +408,7 @@ async function getPendientesWP() {
 
 async function completarPendienteWP(textoOId) {
   const weekId = getWeekId();
-  const wpDay = jsToWpDay(new Date().getDay());
+  const wpDay = wpDayHoy();
   const ref = wpUser().doc(weekId);
   let texto = null;
   await wpDb.runTransaction(async t => {
@@ -420,7 +429,7 @@ async function completarPendienteWP(textoOId) {
 
 async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const focusDia = data.focus?.[wpDay] || {};
@@ -435,7 +444,7 @@ async function agregarEnfoqueDiaWP(texto, wpDayOverride = null) {
 
 async function completarEnfoqueDiaWP(texto, wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const focusDia = data.focus?.[wpDay] || {};
@@ -452,7 +461,7 @@ async function completarEnfoqueDiaWP(texto, wpDayOverride = null) {
 
 async function borrarEnfoqueDiaWP(texto, wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const focusDia = data.focus?.[wpDay] || {};
@@ -469,14 +478,14 @@ async function borrarEnfoqueDiaWP(texto, wpDayOverride = null) {
 
 async function getEventosDia(wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   return (doc.exists ? (doc.data().events?.[wpDay] || []) : []);
 }
 
 async function agregarEventoWP(titulo, hora, durMins = 60, wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const eventos = [...((data.events?.[wpDay]) || [])];
@@ -486,7 +495,7 @@ async function agregarEventoWP(titulo, hora, durMins = 60, wpDayOverride = null)
 
 async function borrarEventoWP(texto, wpDayOverride = null) {
   const weekId = getWeekId();
-  const wpDay = wpDayOverride !== null ? wpDayOverride : jsToWpDay(new Date().getDay());
+  const wpDay = wpDayOverride !== null ? wpDayOverride : wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const eventos = [...((data.events?.[wpDay]) || [])];
@@ -513,7 +522,7 @@ async function tacharItemSuperWP(itemTexto, catIndex) {
 
 async function getEnfoquesDiaWP() {
   const weekId = getWeekId();
-  const wpDay = jsToWpDay(new Date().getDay());
+  const wpDay = wpDayHoy();
   const doc = await wpUser().doc(weekId).get();
   const focusDia = doc.exists ? (doc.data().focus?.[wpDay] || {}) : {};
   return [1, 2, 3].map(n => focusDia[n]).filter(Boolean);
