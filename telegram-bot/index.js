@@ -1744,22 +1744,37 @@ if (FERNANDA_CHAT_ID) {
     } catch (e) { console.error('Cron domingo error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // MEDICINA BENITO — 6:00pm, solo los días que aplica
+  // MEDICINA BENITO — Clozepaxel 8am (July 2-4)
+  cron.schedule('0 8 * * *', async () => {
+    try {
+      const hoy = fechaLocalHoy();
+      if (['2026-07-02','2026-07-03','2026-07-04'].includes(hoy))
+        await bot.sendMessage(FERNANDA_CHAT_ID,
+          '🐱 Medicina de *Benito* (mañana):\n• Clozepaxel 100mg — ½ tableta',
+          { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron Benito 8am error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // MEDICINA BENITO — Clemastine 6pm (July 2-6)
   cron.schedule('0 18 * * *', async () => {
     try {
       const hoy = fechaLocalHoy();
-      const meds = [];
-      if (['2026-07-01','2026-07-02','2026-07-03'].includes(hoy))
-        meds.push('Clozepaxel 100mg — ½ tableta');
-      if (['2026-07-01','2026-07-02','2026-07-03','2026-07-04','2026-07-05','2026-07-06'].includes(hoy))
-        meds.push('Clemastine — ½ tableta');
-      if (meds.length > 0) {
+      if (['2026-07-02','2026-07-03','2026-07-04','2026-07-05','2026-07-06'].includes(hoy))
         await bot.sendMessage(FERNANDA_CHAT_ID,
-          `🐱 Hora de la medicina de *Benito*:\n${meds.map(m => `• ${m}`).join('\n')}`,
-          { parse_mode: 'Markdown' }
-        );
-      }
-    } catch (e) { console.error('Cron medicina Benito error:', e); }
+          '🐱 Medicina de *Benito* (tarde):\n• Clemastine — ½ tableta',
+          { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron Benito 6pm error:', e); }
+  }, { timezone: 'America/Merida' });
+
+  // MEDICINA BENITO — Clozepaxel 8pm (July 2-4)
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      const hoy = fechaLocalHoy();
+      if (['2026-07-02','2026-07-03','2026-07-04'].includes(hoy))
+        await bot.sendMessage(FERNANDA_CHAT_ID,
+          '🐱 Medicina de *Benito* (noche):\n• Clozepaxel 100mg — ½ tableta',
+          { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron Benito 8pm error:', e); }
   }, { timezone: 'America/Merida' });
 
   console.log('✓ Mensajes automáticos activados para Chat ID:', FERNANDA_CHAT_ID);
