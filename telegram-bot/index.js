@@ -319,48 +319,56 @@ const GUIA_LUNA = {
     arquetipo: '🌑 La Hechicera',
     energia: 'descanso, silencio, intuición, sueños, renovación, escucha interior',
     significado: 'La oscuridad de la Luna es un tiempo sagrado de quietud. Fin de un ciclo y comienzo de otro. Momento para retirarse al interior, sentir sin necesidad de producir.',
+    ciencia: 'La Luna se encuentra entre la Tierra y el Sol — no es visible en el cielo nocturno. Se producen mareas vivas (máxima diferencia entre marea alta y baja) por la alineación gravitacional. Las semillas absorben más agua en esta fase según estudios de agricultura biodinámica. Muchos insectos y peces reducen su actividad al desaparecer la luz lunar.',
     ritual: 'escribir un diario, meditar, tomar un baño con sales, descansar sin culpa, agradecer al cuerpo',
   },
   'Luna Creciente': {
     arquetipo: '🌒 La Doncella',
     energia: 'curiosidad, aprendizaje, expansión, entusiasmo, nuevas ideas',
     significado: 'Después de la quietud llega la renovación. Momento ideal para sembrar intenciones, iniciar proyectos y estudiar algo nuevo.',
+    ciencia: 'La luz lunar empieza a aumentar progresivamente. En agricultura biodinámica se considera la mejor fase para plantar semillas y cultivos de hoja, ya que la savia sube con más fuerza hacia los tallos y hojas. Los peces y aves empiezan a incrementar su actividad de alimentación conforme regresa la luz nocturna.',
     ritual: 'escribir objetivos, crear un vision board, comenzar nuevos hábitos, caminar en la naturaleza, sembrar una planta',
   },
   'Cuarto Creciente': {
     arquetipo: '🌒 La Doncella',
     energia: 'curiosidad, aprendizaje, expansión, entusiasmo, nuevas ideas',
     significado: 'La energía sigue creciendo. Buen momento para dar forma a los proyectos que iniciaste y avanzar con determinación.',
+    ciencia: 'La Luna ilumina exactamente la mitad de su cara visible. La tensión gravitacional entre Sol, Tierra y Luna genera mareas de cuadratura (más moderadas). Las plantas en crecimiento aceleran su metabolismo. Es una de las fases favoritas de los apicultores: las abejas son más activas y productivas.',
     ritual: 'escribir objetivos, organizar metas, caminar en la naturaleza, conectar con lo que quieres construir',
   },
   'Gibosa Creciente': {
     arquetipo: '🌖 La Madre (en expansión)',
     energia: 'abundancia, creatividad, expresión, comunidad, amor',
     significado: 'La energía alcanza su plenitud. La Madre simboliza la capacidad de crear, cuidar, enseñar y compartir — más allá de la maternidad biológica.',
+    ciencia: 'La Luna casi alcanza su máxima luminosidad. Los niveles de agua en el suelo y en los tejidos vegetales están en su punto más alto, lo que favorece la cosecha de frutas y verduras jugosas. Los animales nocturnos aumentan su actividad. Los corales comienzan a prepararse para el desove masivo que ocurrirá en luna llena.',
     ritual: 'reuniones entre amigas, crear arte, danza, música, expresar gratitud, conectar con seres queridos',
   },
   'Luna Llena': {
     arquetipo: '🌕 La Madre',
     energia: 'abundancia, creatividad, fertilidad, amor, expresión, comunidad',
     significado: 'Máxima expansión de la energía femenina. Momento para celebrar, crear, convivir y compartir lo que llevas cultivando. La Luna llena ilumina lo que ya está listo para ser visto.',
+    ciencia: 'La Tierra se encuentra entre la Luna y el Sol. Se producen las mareas vivas más intensas del mes. Los arrecifes de coral realizan su desove sincronizado masivo, liberando millones de huevos y esperma en el océano — uno de los fenómenos reproductivos más grandes del planeta. Estudios muestran que el sueño humano promedio se reduce entre 20 y 25 minutos durante la luna llena, posiblemente por la luz o fluctuaciones en la melatonina.',
     ritual: 'círculos de luna, danza, pintura, música, reuniones entre mujeres, agradecer lo que ha florecido',
   },
   'Gibosa Menguante': {
     arquetipo: '🌘 La Sabia (en proceso)',
     energia: 'discernimiento, límites, reflexión, honestidad',
     significado: 'La energía empieza a dirigirse hacia adentro. Momento de preguntarte: ¿qué quiero seguir cultivando? ¿qué ya no me pertenece?',
+    ciencia: 'La luminosidad lunar comienza a decrecer. La actividad de los animales nocturnos empieza a disminuir. En jardinería biodinámica es momento de cosechar raíces y tubérculos, y de podar árboles — la savia baja hacia las raíces, haciendo los cortes menos traumáticos para la planta. Los hongos y setas tienden a fructificar más durante las fases menguantes.',
     ritual: 'limpiar espacios, ordenar, escribir lo que deseas soltar, cerrar pendientes',
   },
   'Cuarto Menguante': {
     arquetipo: '🌘 La Sabia',
     energia: 'discernimiento, límites, depuración, honestidad, transformación',
     significado: 'Tiempo de soltar lo que ya cumplió su ciclo. La Sabia no se aferra — sabe que dejar ir es parte del crecimiento.',
+    ciencia: 'La Luna muestra nuevamente solo la mitad de su cara, pero al revés que en el Cuarto Creciente. Las mareas vuelven a ser moderadas. La naturaleza entra en un proceso de depuración: las plantas concentran energía en raíces y semillas. Los migratorios ajustan sus rutas. Es la fase favorita para compostar y abonar la tierra — los microbios del suelo son más activos.',
     ritual: 'ordenar la casa, limpiar espacios, escribir lo que deseas liberar, perdonar, cerrar ciclos',
   },
   'Luna Menguante': {
     arquetipo: '🌑 La Sabia (transición)',
     energia: 'quietud, introspección, preparación para el nuevo ciclo',
     significado: 'La Luna se acerca a su oscuridad. Momento de prepararse para el descanso y la renovación que viene. Honra lo que viviste en este ciclo.',
+    ciencia: 'La Luna casi ha desaparecido del cielo nocturno. Las mareas se acalman. Muchos animales reducen su actividad al mínimo y algunos entran en períodos breves de letargo o descanso profundo. Las plantas ralentizan su metabolismo y la naturaleza se prepara para el siguiente ciclo. Es el momento de mayor quietud en el ecosistema lunar.',
     ritual: 'meditación, descanso, baño ritual, escribir un diario, agradecer el ciclo que termina',
   },
 };
@@ -368,7 +376,7 @@ const GUIA_LUNA = {
 function guiaLunaActual(faseNombre) {
   const info = GUIA_LUNA[faseNombre];
   if (!info) return '';
-  return `Arquetipo lunar: ${info.arquetipo}\nEnergía: ${info.energia}\nSignificado: ${info.significado}\nRitual sugerido: ${info.ritual}`;
+  return `Arquetipo lunar: ${info.arquetipo}\nEnergía: ${info.energia}\nDato científico: ${info.ciencia}\nSignificado espiritual: ${info.significado}\nRitual sugerido: ${info.ritual}`;
 }
 
 function faseLunar(fecha = new Date()) {
