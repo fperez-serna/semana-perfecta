@@ -314,6 +314,63 @@ async function getDatosGarmin() {
   return null;
 }
 
+const GUIA_LUNA = {
+  'Luna Nueva': {
+    arquetipo: '🌑 La Hechicera',
+    energia: 'descanso, silencio, intuición, sueños, renovación, escucha interior',
+    significado: 'La oscuridad de la Luna es un tiempo sagrado de quietud. Fin de un ciclo y comienzo de otro. Momento para retirarse al interior, sentir sin necesidad de producir.',
+    ritual: 'escribir un diario, meditar, tomar un baño con sales, descansar sin culpa, agradecer al cuerpo',
+  },
+  'Luna Creciente': {
+    arquetipo: '🌒 La Doncella',
+    energia: 'curiosidad, aprendizaje, expansión, entusiasmo, nuevas ideas',
+    significado: 'Después de la quietud llega la renovación. Momento ideal para sembrar intenciones, iniciar proyectos y estudiar algo nuevo.',
+    ritual: 'escribir objetivos, crear un vision board, comenzar nuevos hábitos, caminar en la naturaleza, sembrar una planta',
+  },
+  'Cuarto Creciente': {
+    arquetipo: '🌒 La Doncella',
+    energia: 'curiosidad, aprendizaje, expansión, entusiasmo, nuevas ideas',
+    significado: 'La energía sigue creciendo. Buen momento para dar forma a los proyectos que iniciaste y avanzar con determinación.',
+    ritual: 'escribir objetivos, organizar metas, caminar en la naturaleza, conectar con lo que quieres construir',
+  },
+  'Gibosa Creciente': {
+    arquetipo: '🌖 La Madre (en expansión)',
+    energia: 'abundancia, creatividad, expresión, comunidad, amor',
+    significado: 'La energía alcanza su plenitud. La Madre simboliza la capacidad de crear, cuidar, enseñar y compartir — más allá de la maternidad biológica.',
+    ritual: 'reuniones entre amigas, crear arte, danza, música, expresar gratitud, conectar con seres queridos',
+  },
+  'Luna Llena': {
+    arquetipo: '🌕 La Madre',
+    energia: 'abundancia, creatividad, fertilidad, amor, expresión, comunidad',
+    significado: 'Máxima expansión de la energía femenina. Momento para celebrar, crear, convivir y compartir lo que llevas cultivando. La Luna llena ilumina lo que ya está listo para ser visto.',
+    ritual: 'círculos de luna, danza, pintura, música, reuniones entre mujeres, agradecer lo que ha florecido',
+  },
+  'Gibosa Menguante': {
+    arquetipo: '🌘 La Sabia (en proceso)',
+    energia: 'discernimiento, límites, reflexión, honestidad',
+    significado: 'La energía empieza a dirigirse hacia adentro. Momento de preguntarte: ¿qué quiero seguir cultivando? ¿qué ya no me pertenece?',
+    ritual: 'limpiar espacios, ordenar, escribir lo que deseas soltar, cerrar pendientes',
+  },
+  'Cuarto Menguante': {
+    arquetipo: '🌘 La Sabia',
+    energia: 'discernimiento, límites, depuración, honestidad, transformación',
+    significado: 'Tiempo de soltar lo que ya cumplió su ciclo. La Sabia no se aferra — sabe que dejar ir es parte del crecimiento.',
+    ritual: 'ordenar la casa, limpiar espacios, escribir lo que deseas liberar, perdonar, cerrar ciclos',
+  },
+  'Luna Menguante': {
+    arquetipo: '🌑 La Sabia (transición)',
+    energia: 'quietud, introspección, preparación para el nuevo ciclo',
+    significado: 'La Luna se acerca a su oscuridad. Momento de prepararse para el descanso y la renovación que viene. Honra lo que viviste en este ciclo.',
+    ritual: 'meditación, descanso, baño ritual, escribir un diario, agradecer el ciclo que termina',
+  },
+};
+
+function guiaLunaActual(faseNombre) {
+  const info = GUIA_LUNA[faseNombre];
+  if (!info) return '';
+  return `Arquetipo lunar: ${info.arquetipo}\nEnergía: ${info.energia}\nSignificado: ${info.significado}\nRitual sugerido: ${info.ritual}`;
+}
+
 function faseLunar(fecha = new Date()) {
   const SYNODIC = 29.53058867;
   const refNewMoon = Date.UTC(2000, 0, 6, 18, 14);
@@ -882,12 +939,13 @@ async function ejecutarHerramienta(nombre, input) {
     case 'ver_ciclo_luna': {
       const ciclo = await getCiclo();
       const luna = faseLunar();
-      const notas = ciclo?.notasPersonales ? `\nNotas personales de Fernanda sobre su ciclo: ${ciclo.notasPersonales}` : '\nNo hay notas personales guardadas todavía.';
+      const guiaLuna = guiaLunaActual(luna);
+      const notas = ciclo?.notasPersonales ? `\nNotas personales de Fernanda sobre su ciclo: ${ciclo.notasPersonales}` : '';
       if (!ciclo || !ciclo.ultimoInicio) {
-        return { resultado: `Fase lunar de hoy: ${luna}. No tengo registrado el inicio de su último periodo, así que no puedo calcular el día del ciclo.${notas}`, etiqueta: null };
+        return { resultado: `Fase lunar de hoy: ${luna}.\n${guiaLuna}${notas}\nNo tengo registrado el inicio de su último periodo.`, etiqueta: null };
       }
       const { diaCiclo, fase } = calcularCiclo(ciclo.ultimoInicio, ciclo.duracionPromedio);
-      return { resultado: `Día ${diaCiclo} del ciclo, fase ${fase}. Fase lunar de hoy: ${luna}.${notas}`, etiqueta: null };
+      return { resultado: `Día ${diaCiclo} del ciclo menstrual, fase ${fase}.\nFase lunar: ${luna}.\n${guiaLuna}${notas}`, etiqueta: null };
     }
 
     case 'registrar_inicio_periodo': {
@@ -1668,7 +1726,7 @@ if (FERNANDA_CHAT_ID) {
   cron.schedule('35 7 * * *', async () => {
     try {
       const msg = await generarMensajeAutomatico(
-        'Genera el Daily Brief de las 7:30am. Incluye: cómo durmió según Garmin, Body Battery, estrés, HRV si hay, fase del ciclo con interpretación breve, recordatorio de no tomar café en ayunas (primero agua o algo suave), movimiento recomendado para hoy según ciclo+Garmin, desayuno concreto, enfoques del día, pendientes que tienen sentido para su energía de hoy, y motivación adaptada. Si hay creatina en el contexto, recuérdale tomarla con el desayuno. Sé específica, útil y cero genérica.'
+        'Genera el Daily Brief de las 7:30am. Incluye en este orden: (1) cómo durmió según Garmin, Body Battery, estrés, HRV si hay, (2) fase del ciclo menstrual con interpretación breve, (3) La Luna — menciona la fase lunar del día, su arquetipo femenino, lo que significa energéticamente y el ritual sugerido para hoy, (4) recordatorio de no tomar café en ayunas, (5) movimiento recomendado según ciclo+Garmin, (6) desayuno concreto, (7) enfoques del día y pendientes según energía, (8) motivación adaptada. Si hay creatina en el contexto, recuérdale tomarla con el desayuno. Sé específica, útil, cero genérica — que cada sección se sienta personalizada a su momento real.'
       );
       if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
     } catch (e) { console.error('Cron 7:35am error:', e); }
@@ -1728,7 +1786,7 @@ if (FERNANDA_CHAT_ID) {
   cron.schedule('30 21 * * *', async () => {
     try {
       const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de cierre de las 9:30pm. Recuerda: espironolactona, magnesio y minoxidil. Pregunta si faltó registrar algún gasto. Invítala a soltar el teléfono. Muy breve, cálido, que sienta que el día ya puede cerrarse tranquilo.'
+        'Genera el mensaje de cierre de las 9:30pm. Incluye: (1) recordatorio de espironolactona, magnesio y minoxidil, (2) La Luna — menciona brevemente la fase lunar de hoy y el ritual sugerido para cerrar el día con esa energía, (3) pregunta si faltó registrar algún gasto, (4) invítala a soltar el teléfono. Cálido, breve, que sienta que el día puede cerrarse con paz.'
       );
       if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
     } catch (e) { console.error('Cron 9:30pm error:', e); }
