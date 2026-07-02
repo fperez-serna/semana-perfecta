@@ -83,9 +83,10 @@ def sincronizar():
 
         uid = os.environ["FERNANDA_UID"]
         db = get_db()
+        hora_sync = datetime.now(ZONA).strftime("%H:%M")
         db.collection("users").document(uid).collection("data").document(
             f"garmin_{fecha}"
-        ).set({**datos, "fecha": fecha}, merge=True)
+        ).set({**datos, "fecha": fecha, "ultimoSync": hora_sync}, merge=True)
 
         print(f"[{datetime.now(ZONA).strftime('%H:%M')}] Garmin sync {fecha}: {json.dumps(datos, ensure_ascii=False)}", flush=True)
     except Exception as e:

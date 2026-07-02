@@ -940,7 +940,8 @@ async function ejecutarHerramienta(nombre, input) {
     case 'ver_datos_garmin': {
       const datos = await getDatosGarmin();
       if (!datos) return { resultado: 'No hay datos de Garmin sincronizados todavía.', etiqueta: null };
-      const resultado = `Datos de Garmin del ${datos.fecha}: HRV ${datos.hrv ?? 'N/D'}, Body Battery ${datos.bodyBattery ?? 'N/D'}, estrés ${datos.stress ?? 'N/D'}, FC en reposo ${datos.restingHR ?? 'N/D'}, SpO2 ${datos.spo2 ?? 'N/D'}%, sueño ${datos.suenoHoras ?? 'N/D'}h (score ${datos.suenoScore ?? 'N/D'})`;
+      const syncInfo = datos.ultimoSync ? ` (sync ${datos.ultimoSync})` : '';
+      const resultado = `Datos de Garmin del ${datos.fecha}${syncInfo}: HRV ${datos.hrv ?? 'N/D'}, Body Battery ${datos.bodyBattery ?? 'N/D'}, estrés ${datos.stress ?? 'N/D'}, FC en reposo ${datos.restingHR ?? 'N/D'}, SpO2 ${datos.spo2 ?? 'N/D'}%, sueño ${datos.suenoHoras ?? 'N/D'}h (score ${datos.suenoScore ?? 'N/D'}). Nota: los datos de Body Battery y sueño se finalizan en Garmin entre 8-9am — el sync de 8:30am tiene los valores corregidos.`;
       return { resultado, etiqueta: null };
     }
 
