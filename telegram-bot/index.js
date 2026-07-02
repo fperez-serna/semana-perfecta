@@ -1744,6 +1744,24 @@ if (FERNANDA_CHAT_ID) {
     } catch (e) { console.error('Cron domingo error:', e); }
   }, { timezone: 'America/Merida' });
 
+  // MEDICINA BENITO — 6:00pm, solo los días que aplica
+  cron.schedule('0 18 * * *', async () => {
+    try {
+      const hoy = fechaLocalHoy();
+      const meds = [];
+      if (['2026-07-01','2026-07-02','2026-07-03'].includes(hoy))
+        meds.push('Clozepaxel 100mg — ½ tableta');
+      if (['2026-07-01','2026-07-02','2026-07-03','2026-07-04','2026-07-05','2026-07-06'].includes(hoy))
+        meds.push('Clemastine — ½ tableta');
+      if (meds.length > 0) {
+        await bot.sendMessage(FERNANDA_CHAT_ID,
+          `🐱 Hora de la medicina de *Benito*:\n${meds.map(m => `• ${m}`).join('\n')}`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+    } catch (e) { console.error('Cron medicina Benito error:', e); }
+  }, { timezone: 'America/Merida' });
+
   console.log('✓ Mensajes automáticos activados para Chat ID:', FERNANDA_CHAT_ID);
 } else {
   console.log('⚠️ FERNANDA_CHAT_ID no configurado');
