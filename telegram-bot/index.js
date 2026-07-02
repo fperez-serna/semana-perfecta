@@ -1744,7 +1744,7 @@ if (FERNANDA_CHAT_ID) {
   cron.schedule('25 11 * * 1-5', async () => {
     try {
       const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de las 11:25am para ayudarla a cambiar de modo. Reconoce que está terminando su bloque más valioso. Pregunta si quiere seguir en compu o pasar a modo casa 40 min (sugiere tareas del hogar concretas: tender cama, cocina, lavadora, descongelar comida). Recuerda menú del día según su ciclo. Sé breve y directa, que la ayude a decidir rápido qué sigue.'
+        'Genera el mensaje de las 11:25am. Empieza con un resumen breve de su sueño de anoche según Garmin (horas, score, interpretación honesta en 1 línea — Garmin ya tiene datos completos a esta hora). Si durmió mal (menos de 6h, score bajo o Body Battery menor a 50), sugiere una siesta de 15-20 minutos antes de la 1pm como herramienta de recuperación, no como señal de fracaso. Luego ayúdala a cambiar de modo: reconoce que terminó su bloque más valioso, pregunta si quiere seguir en compu o pasar a modo casa 40 min (tender cama, cocina, lavadora, descongelar comida). Recuerda menú del día según su ciclo. Breve y directa.'
       );
       if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
     } catch (e) { console.error('Cron 11:25am error:', e); }
