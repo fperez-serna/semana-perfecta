@@ -863,7 +863,26 @@ async function ejecutarRegistrarGasto(grupoNombre, subNombre, monto) {
   return { ok: true, mensaje: `Gasto de $${monto} registrado en ${grupo.name} → ${sub.name}` };
 }
 
+// Cache para evitar que el mismo tool se ejecute más de una vez
+// con el mismo input dentro de una ventana de 60 segundos
+const _toolCache = new Map();
+function _toolKey(nombre, input) {
+  return `${nombre}:${JSON.stringify(input)}`;
+}
+function _yaCorrió(nombre, input) {
+  const key = _toolKey(nombre, input);
+  const ts = _toolCache.get(key);
+  if (ts && Date.now() - ts < 60000) return true;
+  _toolCache.set(key, Date.now());
+  return false;
+}
+// Tools de solo lectura que sí pueden correr múltiples veces
+const TOOLS_LECTURA = new Set(['ver_pendientes','ver_agenda_dia','ver_datos_garmin','ver_ciclo_luna','ver_lista_super']);
+
 async function ejecutarHerramienta(nombre, input) {
+  if (!TOOLS_LECTURA.has(nombre) && _yaCorrió(nombre, input)) {
+    return { resultado: 'Ya ejecutado recientemente — no se duplica.', etiqueta: null };
+  }
   switch (nombre) {
     case 'agregar_tarea':
       await agregarTareaWP(input.texto);
