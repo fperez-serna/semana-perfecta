@@ -621,6 +621,48 @@ async function getContextoDia() {
   return ctx;
 }
 
+async function fetchTextoUrl(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot/1.0)' },
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  // Strip scripts, styles, then all tags, normalize whitespace
+  const texto = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '')
+    .replace(/\s{3,}/g, '\n')
+    .trim();
+  return texto.slice(0, 8000); // Limitar para no saturar el contexto
+}
+
+async function guardarRecetaWP(receta) {
+  const ref = wpUser().doc('recetario');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const recetas = doc.exists ? (doc.data().recetas || []) : [];
+    recetas.push({ id: 'r' + Date.now(), ...receta, fechaGuardada: fechaLocalHoy() });
+    t.set(ref, { recetas });
+  });
+}
+
+async function getRecetarioWP() {
+  const doc = await wpUser().doc('recetario').get();
+  return doc.exists ? (doc.data().recetas || []) : [];
+}
+
+async function guardarMenuSemanaWP(menu) {
+  await wpUser().doc('menu_semana').set({ menu, semana: getWeekId(), actualizado: fechaLocalHoy() }, { merge: true });
+}
+
+async function getMenuSemanaWP() {
+  const doc = await wpUser().doc('menu_semana').get();
+  return doc.exists ? doc.data() : null;
+}
+
 // === HERRAMIENTAS PARA CLAUDE (TOOL USE) ===
 
 const TOOLS = [
@@ -747,6 +789,59 @@ const TOOLS = [
       },
       required: ['titulo'],
     },
+  },
+  {
+    name: 'leer_url_receta',
+    description: 'Lee el contenido de una URL (receta de Pinterest, blog de cocina, etc.) para extraer ingredientes y preparación. Úsala cuando Fernanda comparte un link de receta. Después de leerla, extrae el nombre, ingredientes y pasos, y pregúntale si quiere guardarla en su recetario.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL completa de la receta (Pinterest, blog, etc.)' },
+      },
+      required: ['url'],
+    },
+  },
+  {
+    name: 'guardar_receta',
+    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre de la receta' },
+        ingredientes: { type: 'string', description: 'Lista de ingredientes' },
+        pasos: { type: 'string', description: 'Instrucciones de preparación' },
+        url: { type: 'string', description: 'URL de origen (opcional)' },
+        tags: { type: 'string', description: 'Etiquetas como proteína, desayuno, ciclo:folicular, etc. (opcional)' },
+      },
+      required: ['nombre', 'ingredientes'],
+    },
+  },
+  {
+    name: 'ver_recetario',
+    description: 'Lista las recetas guardadas en el recetario de Fernanda. Úsala cuando pregunte por sus recetas o cuando estés diseñando el menú semanal.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        buscar: { type: 'string', description: 'Texto para filtrar recetas por nombre o ingrediente (opcional)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'guardar_menu_semana',
+    description: 'Guarda el menú semanal planeado de Fernanda (desayuno, comida y cena por día). Úsala cuando terminen de diseñar el menú juntas.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        menu: { type: 'string', description: 'El menú completo de la semana en texto libre' },
+      },
+      required: ['menu'],
+    },
+  },
+  {
+    name: 'ver_menu_semana',
+    description: 'Lee el menú semanal guardado de Fernanda. Úsala cuando pregunte qué tiene planeado comer o para generar la lista del súper.',
+    input_schema: { type: 'object', properties: {}, required: [] },
   },
   {
     name: 'ver_datos_garmin',
@@ -954,6 +1049,48 @@ async function ejecutarHerramienta(nombre, input) {
       const borrado = await borrarEventoWP(input.titulo, dia);
       if (!borrado) return { resultado: `No encontré un evento con "${input.titulo}" en ese día.`, etiqueta: null };
       return { resultado: `Evento eliminado: "${borrado}"`, etiqueta: `"${borrado}" eliminado de agenda ✓` };
+    }
+
+    case 'leer_url_receta': {
+      try {
+        const texto = await fetchTextoUrl(input.url);
+        return { resultado: texto, etiqueta: null };
+      } catch (e) {
+        return { resultado: `No pude leer esa URL: ${e.message}`, etiqueta: null };
+      }
+    }
+
+    case 'guardar_receta': {
+      await guardarRecetaWP({
+        nombre: input.nombre,
+        ingredientes: input.ingredientes,
+        pasos: input.pasos || '',
+        url: input.url || '',
+        tags: input.tags || '',
+      });
+      return { resultado: `Receta "${input.nombre}" guardada en el recetario.`, etiqueta: `"${input.nombre}" guardada en recetario ✓` };
+    }
+
+    case 'ver_recetario': {
+      const recetas = await getRecetarioWP();
+      if (recetas.length === 0) return { resultado: 'El recetario está vacío todavía.', etiqueta: null };
+      const filtro = input.buscar?.toLowerCase();
+      const lista = recetas.filter(r =>
+        !filtro || r.nombre.toLowerCase().includes(filtro) || r.ingredientes.toLowerCase().includes(filtro)
+      );
+      if (lista.length === 0) return { resultado: `No encontré recetas con "${input.buscar}".`, etiqueta: null };
+      return { resultado: lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n'), etiqueta: null };
+    }
+
+    case 'guardar_menu_semana': {
+      await guardarMenuSemanaWP(input.menu);
+      return { resultado: 'Menú semanal guardado.', etiqueta: 'menú de la semana guardado ✓' };
+    }
+
+    case 'ver_menu_semana': {
+      const menu = await getMenuSemanaWP();
+      if (!menu) return { resultado: 'No hay menú guardado para esta semana.', etiqueta: null };
+      return { resultado: `Menú semana ${menu.semana} (actualizado ${menu.actualizado}):\n${menu.menu}`, etiqueta: null };
     }
 
     case 'ver_datos_garmin': {
