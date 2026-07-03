@@ -804,7 +804,7 @@ const TOOLS = [
   },
   {
     name: 'guardar_receta',
-    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase.',
+    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye tags con: (1) proteína principal: pollo, res, puerco, pescado, mariscos, huevo, vegetariano, o vegano; (2) tipo de comida: desayuno, comida, cena, snack; (3) fase del ciclo si aplica: folicular, ovulación, lútea, menstrual.',
     input_schema: {
       type: 'object',
       properties: {
@@ -812,7 +812,7 @@ const TOOLS = [
         ingredientes: { type: 'string', description: 'Lista de ingredientes' },
         pasos: { type: 'string', description: 'Instrucciones de preparación' },
         url: { type: 'string', description: 'URL de origen (opcional)' },
-        tags: { type: 'string', description: 'Etiquetas como proteína, desayuno, ciclo:folicular, etc. (opcional)' },
+        tags: { type: 'string', description: 'Ej: "puerco, comida, folicular" — siempre incluir proteína principal y tipo de comida' },
       },
       required: ['nombre', 'ingredientes'],
     },
@@ -1080,14 +1080,14 @@ async function ejecutarHerramienta(nombre, input) {
         !filtro || r.nombre.toLowerCase().includes(filtro) || (r.ingredientes || '').toLowerCase().includes(filtro) || (r.tags || '').toLowerCase().includes(filtro)
       );
       if (lista.length === 0) return { resultado: `No encontré recetas con "${input.buscar}".`, etiqueta: null };
-      // Si hay una sola coincidencia o se buscó algo específico, devuelve detalle completo
-      if (lista.length === 1 || filtro) {
+      // Solo muestra receta completa si hay exactamente UNA coincidencia
+      if (lista.length === 1) {
         const r = lista[0];
-        const detalle = `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`;
-        if (lista.length > 1) return { resultado: lista.map(r2 => `• ${r2.nombre}`).join('\n') + `\n\n(Muestra primera) \n\n${detalle}`, etiqueta: null };
-        return { resultado: detalle, etiqueta: null };
+        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
       }
-      return { resultado: `Tienes ${lista.length} recetas:\n` + lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n'), etiqueta: null };
+      // Múltiples resultados → solo lista los nombres para que elija
+      const encabezado = filtro ? `${lista.length} recetas con "${input.buscar}":` : `Tienes ${lista.length} recetas:`;
+      return { resultado: `${encabezado}\n` + lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n') + '\n\nPide una por nombre para ver los ingredientes y pasos.', etiqueta: null };
     }
 
     case 'guardar_menu_semana': {
