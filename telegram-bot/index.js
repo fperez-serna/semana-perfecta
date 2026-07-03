@@ -819,7 +819,7 @@ const TOOLS = [
   },
   {
     name: 'ver_recetario',
-    description: 'Lista las recetas guardadas en el recetario de Fernanda. Úsala cuando pregunte por sus recetas o cuando estés diseñando el menú semanal.',
+    description: 'Busca recetas en el recetario de Fernanda y devuelve ingredientes y pasos completos. OBLIGATORIO: úsala siempre que pregunte por una receta, pida una receta específica, quiera saber qué tiene guardado, o cuando diseñes el menú semanal. Usa el campo "buscar" para encontrar una receta por nombre o ingrediente.',
     input_schema: {
       type: 'object',
       properties: {
@@ -1077,10 +1077,17 @@ async function ejecutarHerramienta(nombre, input) {
       if (recetas.length === 0) return { resultado: 'El recetario está vacío todavía.', etiqueta: null };
       const filtro = input.buscar?.toLowerCase();
       const lista = recetas.filter(r =>
-        !filtro || r.nombre.toLowerCase().includes(filtro) || r.ingredientes.toLowerCase().includes(filtro)
+        !filtro || r.nombre.toLowerCase().includes(filtro) || (r.ingredientes || '').toLowerCase().includes(filtro) || (r.tags || '').toLowerCase().includes(filtro)
       );
       if (lista.length === 0) return { resultado: `No encontré recetas con "${input.buscar}".`, etiqueta: null };
-      return { resultado: lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n'), etiqueta: null };
+      // Si hay una sola coincidencia o se buscó algo específico, devuelve detalle completo
+      if (lista.length === 1 || filtro) {
+        const r = lista[0];
+        const detalle = `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`;
+        if (lista.length > 1) return { resultado: lista.map(r2 => `• ${r2.nombre}`).join('\n') + `\n\n(Muestra primera) \n\n${detalle}`, etiqueta: null };
+        return { resultado: detalle, etiqueta: null };
+      }
+      return { resultado: `Tienes ${lista.length} recetas:\n` + lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n'), etiqueta: null };
     }
 
     case 'guardar_menu_semana': {
