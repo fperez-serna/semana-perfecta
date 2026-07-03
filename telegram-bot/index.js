@@ -1997,6 +1997,34 @@ if (FERNANDA_CHAT_ID) {
     } catch (e) { console.error('Cron Benito 6pm error:', e); }
   }, { timezone: 'America/Merida' });
 
+  // RESUMEN RECETARIO — 8:00pm todos los días (si hubo nuevas recetas hoy)
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      const hoy = fechaLocalHoy();
+      const recetas = await getRecetarioWP();
+      const nuevas = recetas.filter(r => r.fechaGuardada === hoy);
+      if (nuevas.length === 0) return;
+
+      const EMOJIS = { pollo: '🍗', res: '🐮', puerco: '🐷', cerdo: '🐷', pescado: '🐟', mariscos: '🦐', huevo: '🥚', vegetariano: '🥗', vegano: '🌱' };
+      const grupos = {};
+      for (const r of nuevas) {
+        const tag = (r.tags || '').toLowerCase();
+        const cat = Object.keys(EMOJIS).find(k => tag.includes(k)) || 'otra';
+        if (!grupos[cat]) grupos[cat] = [];
+        grupos[cat].push(r.nombre);
+      }
+
+      let msg = `📚 *Recetas nuevas de hoy (${nuevas.length}):*\n`;
+      for (const [cat, nombres] of Object.entries(grupos)) {
+        const emoji = EMOJIS[cat] || '🍽';
+        const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+        msg += `\n${emoji} *${label}*\n` + nombres.map(n => `  • ${n}`).join('\n');
+      }
+
+      await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+    } catch (e) { console.error('Cron recetario 8pm error:', e); }
+  }, { timezone: 'America/Merida' });
+
   // MEDICINA BENITO — Clozepaxel 8pm (July 2-4)
   cron.schedule('0 20 * * *', async () => {
     try {
@@ -2045,20 +2073,16 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, message: 'Procesando receta...' }));
 
-        // Procesar en background
+        // Procesar en background — silencioso, el resumen llega a las 8pm
         (async () => {
           try {
-            await bot.sendMessage(FERNANDA_CHAT_ID, `📌 Pinterest: encontré un pin nuevo, leyendo la receta...`);
             const texto = await fetchTextoUrl(pinUrl);
-            const { texto: respuesta, acciones } = await llamarClaudeConMemoria(
-              `Acabo de guardar este pin de Pinterest: ${pinUrl}\n\nContenido:\n${texto}\n\nExtrae la receta (nombre, ingredientes y pasos) y guárdala en el recetario. Luego confírmame brevemente.`
+            await llamarClaudeConMemoria(
+              `Acabo de guardar este pin de Pinterest: ${pinUrl}\n\nContenido:\n${texto}\n\nExtrae la receta (nombre, ingredientes y pasos completos) y guárdala en el recetario con sus tags. No mandes ningún mensaje de confirmación — el resumen del día se manda a las 8pm.`
             );
-            let msg = respuesta;
-            if (acciones.length > 0) msg += `\n\n_${acciones.join(' · ')}_`;
-            await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+            console.log(`[Pinterest] Receta guardada desde ${pinUrl}`);
           } catch (e) {
             console.error('Webhook Pinterest error:', e);
-            await bot.sendMessage(FERNANDA_CHAT_ID, `No pude leer ese pin de Pinterest 😕 Mándame el link directo si quieres.`);
           }
         })();
         return;
