@@ -1,5 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
+const http = require('http');
 const TelegramBot = require('node-telegram-bot-api');
 const Anthropic = require('@anthropic-ai/sdk');
 const admin = require('firebase-admin');
@@ -2007,3 +2008,62 @@ if (FERNANDA_CHAT_ID) {
 
 console.log('🤖 Bot Semana Perfecta v2 iniciado — conectado a Weekly Planner');
 bot.on('polling_error', (error) => console.error('Polling error:', error.code));
+
+// === WEBHOOK HTTP SERVER (para Zapier / integraciones externas) ===
+
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || '';
+const PORT = process.env.PORT || 3000;
+
+const server = http.createServer(async (req, res) => {
+  if (req.method !== 'POST') {
+    res.writeHead(405); res.end('Method Not Allowed'); return;
+  }
+
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  // Verificar token de seguridad
+  if (WEBHOOK_TOKEN && url.searchParams.get('token') !== WEBHOOK_TOKEN) {
+    res.writeHead(401); res.end('Unauthorized'); return;
+  }
+
+  let body = '';
+  req.on('data', chunk => { body += chunk; });
+  req.on('end', async () => {
+    try {
+      const payload = JSON.parse(body);
+
+      // POST /webhook/pinterest — nueva receta desde Zapier
+      if (url.pathname === '/webhook/pinterest' && payload.url) {
+        const pinUrl = payload.url;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, message: 'Procesando receta...' }));
+
+        // Procesar en background
+        (async () => {
+          try {
+            await bot.sendMessage(FERNANDA_CHAT_ID, `📌 Pinterest: encontré un pin nuevo, leyendo la receta...`);
+            const texto = await fetchTextoUrl(pinUrl);
+            const { texto: respuesta, acciones } = await llamarClaudeConMemoria(
+              `Acabo de guardar este pin de Pinterest: ${pinUrl}\n\nContenido:\n${texto}\n\nExtrae la receta (nombre, ingredientes y pasos) y guárdala en el recetario. Luego confírmame brevemente.`
+            );
+            let msg = respuesta;
+            if (acciones.length > 0) msg += `\n\n_${acciones.join(' · ')}_`;
+            await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
+          } catch (e) {
+            console.error('Webhook Pinterest error:', e);
+            await bot.sendMessage(FERNANDA_CHAT_ID, `No pude leer ese pin de Pinterest 😕 Mándame el link directo si quieres.`);
+          }
+        })();
+        return;
+      }
+
+      res.writeHead(404); res.end('Unknown endpoint');
+    } catch (e) {
+      res.writeHead(400); res.end('Bad request');
+    }
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`🌐 Webhook server escuchando en puerto ${PORT}`);
+});
