@@ -813,7 +813,7 @@ const TOOLS = [
   },
   {
     name: 'guardar_receta',
-    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye: (1) tags con proteína principal (pollo/res/puerco/pescado/mariscos/huevo/vegetariano/vegano), tipo de comida (desayuno/comida/cena/snack) y fase del ciclo si aplica; (2) calorias_por_porcion: estimación aproximada de calorías por porción basada en los ingredientes — es OBLIGATORIO calcularlo siempre, aunque sea un rango como "400-500".',
+    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye: (1) tags con proteína principal y tipo de comida; (2) calorias_por_porcion: estimación por porción, ej "380-420 kcal"; (3) costo_aproximado: estimación del costo total en pesos mexicanos para ~4 porciones, con nivel: "económica (~$80-150 MXN)", "media (~$150-300 MXN)" o "premium (+$300 MXN)". Los tres son OBLIGATORIOS.',
     input_schema: {
       type: 'object',
       properties: {
@@ -821,10 +821,11 @@ const TOOLS = [
         ingredientes: { type: 'string', description: 'Lista de ingredientes' },
         pasos: { type: 'string', description: 'Instrucciones de preparación' },
         url: { type: 'string', description: 'URL de origen (opcional)' },
-        tags: { type: 'string', description: 'Ej: "puerco, comida, folicular" — siempre incluir proteína principal y tipo de comida' },
+        tags: { type: 'string', description: 'Ej: "puerco, comida, folicular"' },
         calorias_por_porcion: { type: 'string', description: 'Estimación de calorías por porción, ej: "380-420 kcal"' },
+        costo_aproximado: { type: 'string', description: 'Ej: "económica (~$120 MXN)" o "media (~$220 MXN)" o "premium (+$350 MXN)"' },
       },
-      required: ['nombre', 'ingredientes', 'calorias_por_porcion'],
+      required: ['nombre', 'ingredientes', 'calorias_por_porcion', 'costo_aproximado'],
     },
   },
   {
@@ -1079,6 +1080,7 @@ async function ejecutarHerramienta(nombre, input) {
         url: input.url || '',
         tags: input.tags || '',
         calorias: input.calorias_por_porcion || '',
+        costo: input.costo_aproximado || '',
       });
       return { resultado: `Receta "${input.nombre}" guardada en el recetario.`, etiqueta: `"${input.nombre}" guardada en recetario ✓` };
     }
@@ -1095,7 +1097,8 @@ async function ejecutarHerramienta(nombre, input) {
       if (lista.length === 1) {
         const r = lista[0];
         const kcal = r.calorias ? `\n\n🔥 ~${r.calorias} por porción` : '';
-        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${kcal}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
+        const costo = r.costo ? `\n💰 ${r.costo}` : '';
+        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${kcal}${costo}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
       }
       // Múltiples resultados → solo lista los nombres para que elija
       const encabezado = filtro ? `${lista.length} recetas con "${input.buscar}":` : `Tienes ${lista.length} recetas:`;
