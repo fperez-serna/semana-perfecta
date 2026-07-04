@@ -608,7 +608,12 @@ async function getContextoDia() {
     : null;
   const notasCiclo = cicloDoc?.notasPersonales || null;
 
-  let ctx = '';
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const fechaHoy = fechaLocalHoy();
+  const diaHoy = dias[new Date(fechaHoy + 'T12:00:00').getDay()];
+  const fechaFormato = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Merida' }).format(new Date());
+
+  let ctx = `\nFecha de hoy: ${diaHoy} ${fechaFormato} (${fechaHoy})`;
   if (garmin) {
     ctx += `\nGarmin (${garmin.fecha}): sueño ${garmin.suenoHoras ?? 'N/D'}h score ${garmin.suenoScore ?? 'N/D'}, Body Battery ${garmin.bodyBattery ?? 'N/D'}, estrés ${garmin.stress ?? 'N/D'}, HRV ${garmin.hrv ?? 'N/D'}, FC reposo ${garmin.restingHR ?? 'N/D'}, SpO2 ${garmin.spo2 ?? 'N/D'}%`;
   }
