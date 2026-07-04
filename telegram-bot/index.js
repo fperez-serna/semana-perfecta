@@ -645,6 +645,10 @@ async function guardarRecetaWP(receta) {
   await wpDb.runTransaction(async t => {
     const doc = await t.get(ref);
     const recetas = doc.exists ? (doc.data().recetas || []) : [];
+    // Evitar duplicados: no guardar si ya existe una receta con el mismo nombre (case-insensitive)
+    const nombreNuevo = receta.nombre.toLowerCase().trim();
+    const yaExiste = recetas.some(r => r.nombre.toLowerCase().trim() === nombreNuevo);
+    if (yaExiste) return;
     recetas.push({ id: 'r' + Date.now(), ...receta, fechaGuardada: fechaLocalHoy() });
     t.set(ref, { recetas });
   });
