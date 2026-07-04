@@ -808,7 +808,7 @@ const TOOLS = [
   },
   {
     name: 'guardar_receta',
-    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye tags con: (1) proteína principal: pollo, res, puerco, pescado, mariscos, huevo, vegetariano, o vegano; (2) tipo de comida: desayuno, comida, cena, snack; (3) fase del ciclo si aplica: folicular, ovulación, lútea, menstrual.',
+    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye: (1) tags con proteína principal (pollo/res/puerco/pescado/mariscos/huevo/vegetariano/vegano), tipo de comida (desayuno/comida/cena/snack) y fase del ciclo si aplica; (2) calorias_por_porcion: estimación aproximada de calorías por porción basada en los ingredientes — es OBLIGATORIO calcularlo siempre, aunque sea un rango como "400-500".',
     input_schema: {
       type: 'object',
       properties: {
@@ -817,8 +817,9 @@ const TOOLS = [
         pasos: { type: 'string', description: 'Instrucciones de preparación' },
         url: { type: 'string', description: 'URL de origen (opcional)' },
         tags: { type: 'string', description: 'Ej: "puerco, comida, folicular" — siempre incluir proteína principal y tipo de comida' },
+        calorias_por_porcion: { type: 'string', description: 'Estimación de calorías por porción, ej: "380-420 kcal"' },
       },
-      required: ['nombre', 'ingredientes'],
+      required: ['nombre', 'ingredientes', 'calorias_por_porcion'],
     },
   },
   {
@@ -1072,6 +1073,7 @@ async function ejecutarHerramienta(nombre, input) {
         pasos: input.pasos || '',
         url: input.url || '',
         tags: input.tags || '',
+        calorias: input.calorias_por_porcion || '',
       });
       return { resultado: `Receta "${input.nombre}" guardada en el recetario.`, etiqueta: `"${input.nombre}" guardada en recetario ✓` };
     }
@@ -1087,7 +1089,8 @@ async function ejecutarHerramienta(nombre, input) {
       // Solo muestra receta completa si hay exactamente UNA coincidencia
       if (lista.length === 1) {
         const r = lista[0];
-        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
+        const kcal = r.calorias ? `\n\n🔥 ~${r.calorias} por porción` : '';
+        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${kcal}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
       }
       // Múltiples resultados → solo lista los nombres para que elija
       const encabezado = filtro ? `${lista.length} recetas con "${input.buscar}":` : `Tienes ${lista.length} recetas:`;
