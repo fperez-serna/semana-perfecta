@@ -121,7 +121,15 @@ Nunca castigues ni regañes. Si no hizo algo: "Ok. Entonces simplificamos."
 Fer cansada → bajamos el ritmo. Fer saturada → elegimos solo una cosa. Fer triste → primero regulación, después productividad. Fer con energía → aprovechamos con inteligencia, no con exceso.
 
 ACCESO TÉCNICO REAL (tienes herramientas conectadas a Firebase):
-Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, gastos, avances en metas, datos de Garmin y ciclo. Cuando ejecutes algo, confírmalo. Nunca digas que no tienes acceso — sí lo tienes.
+Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, gastos, avances en metas, datos de Garmin, ciclo, recetario e inventario del hogar. Cuando ejecutes algo, confírmalo. Nunca digas que no tienes acceso — sí lo tienes.
+
+INVENTARIO DEL HOGAR — detecta estas frases automáticamente:
+- "se acabó X" / "ya no hay X" / "agotamos X" → actualizar_estado_producto: agotado + agregar a lista del súper
+- "me queda poco X" / "casi no hay X" / "tengo poca X" → actualizar_estado_producto: bajo + agregar a lista del súper
+- "compré X" / "ya tenemos X" / "llegó X" → actualizar_estado_producto: disponible
+- "caducan X" / "se va a vencer X" → actualizar_estado_producto: por_caducar
+- "agrega X al súper" → agregar_item_super (sin tocar inventario)
+- Cuando alguien pegue una lista larga de productos → cargar_lista_productos_casa (inferir categoría y frecuencia de cada uno)
 
 REGLA ABSOLUTA — NUNCA INVENTES NI MIENTAS:
 - Jamás inventes pendientes, tareas, gastos, enfoques o cualquier dato que no venga de una herramienta o de la conversación real.
@@ -645,6 +653,70 @@ async function fetchTextoUrl(url) {
   return texto.slice(0, 8000); // Limitar para no saturar el contexto
 }
 
+// === INVENTARIO CASA ===
+
+async function getInventarioCasa(filtro = {}) {
+  const doc = await wpUser().doc('inventario_casa').get();
+  let productos = doc.exists ? (doc.data().productos || []) : [];
+  if (filtro.categoria) productos = productos.filter(p => p.categoria === filtro.categoria);
+  if (filtro.estado) productos = productos.filter(p => p.estado === filtro.estado);
+  if (filtro.buscar) {
+    const q = filtro.buscar.toLowerCase();
+    productos = productos.filter(p => p.nombre.toLowerCase().includes(q));
+  }
+  return productos;
+}
+
+async function agregarProductoCasa(producto) {
+  const ref = wpUser().doc('inventario_casa');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const productos = doc.exists ? (doc.data().productos || []) : [];
+    const nombreNuevo = producto.nombre.toLowerCase().trim();
+    const idx = productos.findIndex(p => p.nombre.toLowerCase().trim() === nombreNuevo);
+    if (idx >= 0) {
+      productos[idx] = { ...productos[idx], ...producto, fechaActualizado: fechaLocalHoy() };
+    } else {
+      productos.push({ id: 'p' + Date.now(), ...producto, estado: producto.estado || 'disponible', fechaActualizado: fechaLocalHoy() });
+    }
+    t.set(ref, { productos });
+  });
+}
+
+async function cargarListaProductosCasa(lista) {
+  const ref = wpUser().doc('inventario_casa');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const productos = doc.exists ? (doc.data().productos || []) : [];
+    let agregados = 0;
+    for (const producto of lista) {
+      const nombreNuevo = producto.nombre.toLowerCase().trim();
+      const existe = productos.some(p => p.nombre.toLowerCase().trim() === nombreNuevo);
+      if (!existe) {
+        productos.push({ id: 'p' + Date.now() + agregados, ...producto, estado: 'disponible', fechaActualizado: fechaLocalHoy() });
+        agregados++;
+      }
+    }
+    t.set(ref, { productos });
+    return agregados;
+  });
+}
+
+async function actualizarProductoCasa(nombre, cambios) {
+  const ref = wpUser().doc('inventario_casa');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    if (!doc.exists) return false;
+    const productos = doc.data().productos || [];
+    const lower = nombre.toLowerCase();
+    const idx = productos.findIndex(p => p.nombre.toLowerCase().includes(lower));
+    if (idx < 0) return false;
+    productos[idx] = { ...productos[idx], ...cambios, fechaActualizado: fechaLocalHoy() };
+    t.set(ref, { productos });
+    return productos[idx];
+  });
+}
+
 async function guardarRecetaWP(receta) {
   const ref = wpUser().doc('recetario');
   await wpDb.runTransaction(async t => {
@@ -798,6 +870,73 @@ const TOOLS = [
         dia: { type: 'number', description: 'Día de la semana (0=lunes…6=domingo). Omitir para hoy.', minimum: 0, maximum: 6 },
       },
       required: ['titulo'],
+    },
+  },
+  {
+    name: 'ver_inventario_casa',
+    description: 'Consulta el inventario de productos del hogar de Fernanda. Úsala cuando pregunte qué tiene en casa, qué le falta, qué está agotado, o cuando necesites saber si tiene un ingrediente disponible.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        categoria: { type: 'string', description: 'Filtrar por: despensa, refrigerador, congelador, limpieza, baño, mascotas, cuidado_mama, farmacia, lavanderia, cocina' },
+        estado: { type: 'string', description: 'Filtrar por: disponible, bajo, agotado, por_caducar' },
+        buscar: { type: 'string', description: 'Buscar producto por nombre' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'agregar_producto_casa',
+    description: 'Agrega o actualiza un producto en el inventario del hogar. Úsala cuando mencione productos que tiene en casa, frecuencia de compra, etc.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del producto' },
+        categoria: { type: 'string', description: 'despensa, refrigerador, congelador, limpieza, baño, mascotas, cuidado_mama, farmacia, lavanderia, cocina' },
+        unidad: { type: 'string', description: 'piezas, litros, kg, g, rollos, etc.' },
+        frecuencia: { type: 'string', description: 'diario, semanal, quincenal, mensual' },
+        prioridad: { type: 'string', description: 'alta, media, baja' },
+        notas: { type: 'string', description: 'Notas adicionales (opcional)' },
+      },
+      required: ['nombre', 'categoria'],
+    },
+  },
+  {
+    name: 'actualizar_estado_producto',
+    description: 'Actualiza el estado de un producto del inventario. OBLIGATORIO usar cuando diga: "se acabó X" → agotado, "me queda poco X" → bajo, "compré X" → disponible, "caducan X" → por_caducar. Cuando marques algo como agotado o bajo, agrégalo automáticamente a la lista del súper con agregar_item_super.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del producto' },
+        estado: { type: 'string', description: 'disponible, bajo, agotado, por_caducar, caducado' },
+        cantidad: { type: 'string', description: 'Cantidad actualizada (opcional)' },
+      },
+      required: ['nombre', 'estado'],
+    },
+  },
+  {
+    name: 'cargar_lista_productos_casa',
+    description: 'Carga una lista grande de productos del hogar de una sola vez. Úsala cuando Fernanda pegue o dicte su lista maestra de productos recurrentes. Infiere categoría, frecuencia y prioridad de cada producto automáticamente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        productos: {
+          type: 'array',
+          description: 'Lista de productos a cargar',
+          items: {
+            type: 'object',
+            properties: {
+              nombre: { type: 'string' },
+              categoria: { type: 'string' },
+              unidad: { type: 'string' },
+              frecuencia: { type: 'string' },
+              prioridad: { type: 'string' },
+            },
+            required: ['nombre', 'categoria'],
+          },
+        },
+      },
+      required: ['productos'],
     },
   },
   {
@@ -1061,6 +1200,36 @@ async function ejecutarHerramienta(nombre, input) {
       const borrado = await borrarEventoWP(input.titulo, dia);
       if (!borrado) return { resultado: `No encontré un evento con "${input.titulo}" en ese día.`, etiqueta: null };
       return { resultado: `Evento eliminado: "${borrado}"`, etiqueta: `"${borrado}" eliminado de agenda ✓` };
+    }
+
+    case 'ver_inventario_casa': {
+      const productos = await getInventarioCasa(input);
+      if (productos.length === 0) return { resultado: 'No hay productos en el inventario con esos filtros.', etiqueta: null };
+      const porCategoria = {};
+      for (const p of productos) {
+        const cat = p.categoria || 'varios';
+        if (!porCategoria[cat]) porCategoria[cat] = [];
+        const estadoIcon = { disponible: '✅', bajo: '⚠️', agotado: '❌', por_caducar: '⏰', caducado: '🚫' }[p.estado] || '•';
+        porCategoria[cat].push(`${estadoIcon} ${p.nombre}${p.notas ? ` (${p.notas})` : ''}`);
+      }
+      const lista = Object.entries(porCategoria).map(([cat, items]) => `*${cat}:*\n${items.join('\n')}`).join('\n\n');
+      return { resultado: lista, etiqueta: null };
+    }
+
+    case 'agregar_producto_casa': {
+      await agregarProductoCasa(input);
+      return { resultado: `"${input.nombre}" agregado al inventario (${input.categoria}).`, etiqueta: `${input.nombre} en inventario ✓` };
+    }
+
+    case 'actualizar_estado_producto': {
+      const resultado = await actualizarProductoCasa(input.nombre, { estado: input.estado, ...(input.cantidad ? { cantidad: input.cantidad } : {}) });
+      if (!resultado) return { resultado: `No encontré "${input.nombre}" en el inventario. ¿Quieres que lo agregue?`, etiqueta: null };
+      return { resultado: `"${resultado.nombre}" actualizado → ${input.estado}`, etiqueta: `${resultado.nombre}: ${input.estado} ✓` };
+    }
+
+    case 'cargar_lista_productos_casa': {
+      await cargarListaProductosCasa(input.productos);
+      return { resultado: `${input.productos.length} productos cargados al inventario.`, etiqueta: `${input.productos.length} productos en inventario ✓` };
     }
 
     case 'leer_url_receta': {
