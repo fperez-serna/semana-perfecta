@@ -952,19 +952,29 @@ const TOOLS = [
   },
   {
     name: 'guardar_receta',
-    description: 'Guarda una receta en el recetario personal de Fernanda en Firebase. SIEMPRE incluye: (1) tags con proteína principal y tipo de comida; (2) calorias_por_porcion: estimación por porción, ej "380-420 kcal"; (3) costo_aproximado: estimación del costo total en pesos mexicanos para ~4 porciones, con nivel: "económica (~$80-150 MXN)", "media (~$150-300 MXN)" o "premium (+$300 MXN)". Los tres son OBLIGATORIOS.',
+    description: 'Guarda una receta en Firebase. Infiere AUTOMÁTICAMENTE todos los metadatos — el usuario nunca los escribe. Reglas de inferencia: si tarda <10 min → etiqueta menos_10_min; si proteína >25g → alta_proteina; si <400 kcal → ligera; si se puede refrigerar varios días → meal_prep; tipo_platillo: smoothie si es licuado, ensalada, sopa, guisado, etc. Categorías de momento_ideal: desayuno_rapido, comida_familiar, cena_ligera, snack, meal_prep. SIEMPRE incluir calorias, proteina, costo_aproximado.',
     input_schema: {
       type: 'object',
       properties: {
-        nombre: { type: 'string', description: 'Nombre de la receta' },
-        ingredientes: { type: 'string', description: 'Lista de ingredientes' },
-        pasos: { type: 'string', description: 'Instrucciones de preparación' },
+        nombre: { type: 'string' },
+        ingredientes: { type: 'string', description: 'Lista de ingredientes con cantidades' },
+        preparacion: { type: 'string', description: 'Pasos numerados' },
+        tiempo_minutos: { type: 'number', description: 'Tiempo total de preparación' },
+        porciones: { type: 'number', description: 'Número de porciones' },
+        calorias: { type: 'string', description: 'Ej: "380-420 kcal por porción"' },
+        proteina: { type: 'string', description: 'Ej: "28g"' },
+        carbohidratos: { type: 'string', description: 'Ej: "35g"' },
+        grasas: { type: 'string', description: 'Ej: "12g"' },
+        costo_aproximado: { type: 'string', description: 'Ej: "económica (~$120 MXN)"' },
+        tipo_platillo: { type: 'string', description: 'smoothie, ensalada, sopa, guisado, bowl, wrap, omelette, etc.' },
+        momento_ideal: { type: 'string', description: 'desayuno_rapido, comida_familiar, cena_ligera, snack, meal_prep' },
+        etiquetas: { type: 'string', description: 'Inferidas: alta_proteina, ligera, menos_10_min, meal_prep, sin_gluten, etc.' },
+        ingredientes_principales: { type: 'string', description: 'Proteína principal: pollo, res, atun, huevo, etc.' },
+        fase_ciclo: { type: 'string', description: 'Si aplica: folicular, ovulacion, lutea, menstrual' },
         url: { type: 'string', description: 'URL de origen (opcional)' },
-        tags: { type: 'string', description: 'Ej: "puerco, comida, folicular"' },
-        calorias_por_porcion: { type: 'string', description: 'Estimación de calorías por porción, ej: "380-420 kcal"' },
-        costo_aproximado: { type: 'string', description: 'Ej: "económica (~$120 MXN)" o "media (~$220 MXN)" o "premium (+$350 MXN)"' },
+        notas: { type: 'string', description: 'Notas adicionales (opcional)' },
       },
-      required: ['nombre', 'ingredientes', 'calorias_por_porcion', 'costo_aproximado'],
+      required: ['nombre', 'ingredientes', 'calorias', 'costo_aproximado'],
     },
   },
   {
@@ -1245,11 +1255,21 @@ async function ejecutarHerramienta(nombre, input) {
       await guardarRecetaWP({
         nombre: input.nombre,
         ingredientes: input.ingredientes,
-        pasos: input.pasos || '',
+        pasos: input.preparacion || '',
         url: input.url || '',
-        tags: input.tags || '',
-        calorias: input.calorias_por_porcion || '',
+        tags: input.etiquetas || '',
+        calorias: input.calorias || '',
         costo: input.costo_aproximado || '',
+        tiempo_minutos: input.tiempo_minutos || null,
+        porciones: input.porciones || null,
+        proteina: input.proteina || '',
+        carbohidratos: input.carbohidratos || '',
+        grasas: input.grasas || '',
+        tipo_platillo: input.tipo_platillo || '',
+        momento_ideal: input.momento_ideal || '',
+        ingredientes_principales: input.ingredientes_principales || '',
+        fase_ciclo: input.fase_ciclo || '',
+        notas: input.notas || '',
       });
       return { resultado: `Receta "${input.nombre}" guardada en el recetario.`, etiqueta: `"${input.nombre}" guardada en recetario ✓` };
     }
@@ -1267,7 +1287,11 @@ async function ejecutarHerramienta(nombre, input) {
         const r = lista[0];
         const kcal = r.calorias ? `\n\n🔥 ~${r.calorias} por porción` : '';
         const costo = r.costo ? `\n💰 ${r.costo}` : '';
-        return { resultado: `📖 ${r.nombre}\n\n🥗 Ingredientes:\n${r.ingredientes}\n\n👩‍🍳 Preparación:\n${r.pasos || 'No guardada'}${kcal}${costo}${r.url ? `\n\n🔗 ${r.url}` : ''}${r.tags ? `\n\n🏷 ${r.tags}` : ''}`, etiqueta: null };
+        const tiempo = r.tiempo_minutos ? `⏱ ${r.tiempo_minutos} min` : '';
+        const porciones = r.porciones ? ` · ${r.porciones} porciones` : '';
+        const info = [tiempo + porciones, kcal.replace('\n\n',''), costo.replace('\n','')].filter(Boolean).join('  ·  ');
+        const macro = [r.proteina && `Proteína: ${r.proteina}`, r.carbohidratos && `Carbos: ${r.carbohidratos}`, r.grasas && `Grasas: ${r.grasas}`].filter(Boolean).join(' · ');
+        return { resultado: `📖 *${r.nombre}*${info ? `\n${info}` : ''}${macro ? `\n${macro}` : ''}\n\n🥗 *Ingredientes:*\n${r.ingredientes}\n\n👩‍🍳 *Preparación:*\n${r.pasos || 'No guardada'}${r.notas ? `\n\n📝 ${r.notas}` : ''}${r.url ? `\n\n🔗 ${r.url}` : ''}`, etiqueta: null };
       }
       // Múltiples resultados → solo lista los nombres para que elija
       const encabezado = filtro ? `${lista.length} recetas con "${input.buscar}":` : `Tienes ${lista.length} recetas:`;
