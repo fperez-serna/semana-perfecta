@@ -2083,10 +2083,15 @@ const server = http.createServer(async (req, res) => {
       const payload = JSON.parse(body);
 
       // POST /webhook/pinterest — nueva receta desde Zapier
-      if (url.pathname === '/webhook/pinterest' && payload.url) {
-        const pinUrl = payload.url;
+      if (url.pathname === '/webhook/pinterest') {
+        // Siempre responder 200 para que Make no desactive el scenario
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, message: 'Procesando receta...' }));
+        res.end(JSON.stringify({ ok: true }));
+        if (!payload.url) {
+          console.log('[Pinterest] Pin sin URL (Idea Pin), ignorado.');
+          return;
+        }
+        const pinUrl = payload.url;
 
         // Procesar en background — silencioso, el resumen llega a las 8pm
         (async () => {
