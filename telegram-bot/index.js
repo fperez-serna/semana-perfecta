@@ -989,6 +989,17 @@ const TOOLS = [
     },
   },
   {
+    name: 'borrar_receta',
+    description: 'Elimina una receta del recetario por nombre. Úsala cuando Fernanda pida borrar o eliminar una receta específica.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre o fragmento del nombre de la receta a borrar' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
     name: 'guardar_menu_semana',
     description: 'Guarda el menú semanal planeado de Fernanda (desayuno, comida y cena por día). Úsala cuando terminen de diseñar el menú juntas.',
     input_schema: {
@@ -1296,6 +1307,24 @@ async function ejecutarHerramienta(nombre, input) {
       // Múltiples resultados → solo lista los nombres para que elija
       const encabezado = filtro ? `${lista.length} recetas con "${input.buscar}":` : `Tienes ${lista.length} recetas:`;
       return { resultado: `${encabezado}\n` + lista.map(r => `• ${r.nombre}${r.tags ? ` [${r.tags}]` : ''}`).join('\n') + '\n\nPide una por nombre para ver los ingredientes y pasos.', etiqueta: null };
+    }
+
+    case 'borrar_receta': {
+      const ref = wpUser().doc('recetario');
+      let borrada = null;
+      await wpDb.runTransaction(async t => {
+        const doc = await t.get(ref);
+        if (!doc.exists) return;
+        const recetas = doc.data().recetas || [];
+        const lower = input.nombre.toLowerCase();
+        const idx = recetas.findIndex(r => r.nombre.toLowerCase().includes(lower));
+        if (idx < 0) return;
+        borrada = recetas[idx].nombre;
+        recetas.splice(idx, 1);
+        t.set(ref, { recetas });
+      });
+      if (!borrada) return { resultado: `No encontré ninguna receta con "${input.nombre}".`, etiqueta: null };
+      return { resultado: `"${borrada}" eliminada del recetario.`, etiqueta: `"${borrada}" borrada ✓` };
     }
 
     case 'guardar_menu_semana': {
