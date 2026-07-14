@@ -277,6 +277,8 @@ async function registrarComida(descripcion, calorias, proteina = 0, carbos = 0, 
     grasas: acc.grasas + e.grasas,
   }), { calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
   await ref.set({ fecha, entries, total });
+  // Mirror totals to WP Firebase so the dashboard can read them
+  wpUser().doc('nutricion_hoy').set({ fecha, total, entradas: entries.length }).catch(e => console.error('nutricion wpUser:', e));
   return { entries, total };
 }
 
