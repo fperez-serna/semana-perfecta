@@ -602,9 +602,21 @@ const DEFAULT_GASTOS = ['🍽 Restaurante', '🛒 Supermercado', '🎬 Entreteni
 async function getGastoCats() {
   try {
     const doc = await wpUser().doc('config').get();
-    const cats = doc.exists ? doc.data()?.cfg?.gastoCats : null;
-    return (cats && cats.length > 0) ? cats : DEFAULT_GASTOS;
-  } catch { return DEFAULT_GASTOS; }
+    if (!doc.exists) {
+      console.warn('getGastoCats: config doc no existe en Firebase — usando defaults');
+      return DEFAULT_GASTOS;
+    }
+    const data = doc.data();
+    const cats = data?.cfg?.gastoCats;
+    if (!cats || !cats.length) {
+      console.warn('getGastoCats: gastoCats vacío en config doc. Data keys:', Object.keys(data || {}), 'cfg keys:', Object.keys(data?.cfg || {}));
+      return DEFAULT_GASTOS;
+    }
+    return cats;
+  } catch(e) {
+    console.error('getGastoCats error:', e.message);
+    return DEFAULT_GASTOS;
+  }
 }
 
 async function getMetodosPago() {
