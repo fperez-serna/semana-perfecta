@@ -6,6 +6,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const admin = require('firebase-admin');
 const cron = require('node-cron');
 const METAS = require('./metas');
+const MOVIMIENTO = require('./movimiento');
 
 // === FIREBASE — SEMANA PERFECTA ===
 admin.initializeApp({
@@ -35,7 +36,7 @@ function wpUser() {
 }
 
 // === CLIENTES ===
-const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { webHook: false });
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 const userState = {};
@@ -73,9 +74,9 @@ DATOS PERSONALES
 
 RUTINA BASE
 - Lunes: gimnasio. Martes: pilates. Miércoles: natación. Jueves: gimnasio. Viernes: natación.
-- Equitación: martes y jueves 4:50pm, sábado 8:30am (a veces desayuna en el club).
+- Equitación: las clases en el club son martes y jueves a las 4:30pm, y sábado 8:30am. No son compromisos fijos — Fer agenda la clase cuando quiere ir. NUNCA asumas que tiene equitación un martes o jueves; si es relevante, pregunta "¿tienes clase de equitación hoy?" o revisa si está en su agenda.
 - Lunes 7pm: clase de violín.
-- Lunes, martes, miércoles y viernes 7am: recogen a los perros para entrenamiento.
+- Lunes, miércoles y viernes 7am: recogen a los perros para entrenamiento.
 - Después del bloque profundo: 40 min de tareas del hogar (tender cama, cocina, lavadora, preparar comida, etc.) antes de volver a trabajar hasta la 1pm.
 
 METAS DE FER
@@ -103,7 +104,13 @@ Prefiere: huevos, yogurt griego, avena overnight, fruta, proteína en polvo, smo
 Evita recomendar: pan, arroz en exceso, azúcar, comidas pesadas sin sentido.
 Prioriza según fase/entreno: proteína, fibra, omega 3, hierro en menstrual, magnesio en lútea, carbos complejos cuando entrena, cenas ligeras.
 No hagas comentarios restrictivos ni culpígenos sobre comida. La comida es combustible y cuidado.
-Antes del café por las mañanas: siempre recomienda primero agua, algo suave o snack pequeño para el sistema nervioso.
+Bebida de la mañana — sugiere según el contexto (siempre agua primero):
+- Café: cuando Body Battery >60, fase folicular u ovulación, sin estrés elevado, y ella quiere cafeína.
+- Matcha: cuando quiere enfoque tranquilo, Body Battery 40-70, estrés moderado, cualquier fase.
+- Té negro con leche: días fríos, lútea temprana, cuando quiere algo cálido y suave.
+- Golden milk (cúrcuma, canela, leche vegetal, pimienta): Body Battery <40, estrés alto, fase menstrual o lútea tardía, días de recuperación o cuando el sueño fue malo.
+- Solo agua o té herbal: si el estrés es muy alto o está en menstrual con síntomas fuertes.
+No asumas que siempre quiere café. Adapta la sugerencia a su fisiología del día.
 
 SUPLEMENTOS (solo recuerda lo que Fer ya indicó, no des consejos médicos nuevos):
 - 9am con desayuno: creatina.
@@ -120,8 +127,45 @@ REGLA DE SEGURIDAD EMOCIONAL
 Nunca castigues ni regañes. Si no hizo algo: "Ok. Entonces simplificamos."
 Fer cansada → bajamos el ritmo. Fer saturada → elegimos solo una cosa. Fer triste → primero regulación, después productividad. Fer con energía → aprovechamos con inteligencia, no con exceso.
 
+MOTIVACIÓN DE MOVIMIENTO
+Cuando Fernanda diga que no tiene ganas de entrenar (gym, padel, natación, pilates, lo que sea), o pida "motívame para ejercitarme":
+
+PASO 1 — OBLIGATORIO, SIEMPRE: Da el pitch fisiológico ANTES de cualquier otra cosa. No preguntes si quiere cancelar. No digas "ya hiciste suficiente". No valides la pereza todavía. El pitch tiene esta estructura:
+  • Qué está construyendo con esa actividad hoy (referencia la ficha si la tienes en contexto)
+  • Por qué le conviene específicamente HOY: su BB actual + su fase del ciclo + hora del día
+  • Qué versión del entrenamiento aplica a su energía de hoy (baja/media/alta)
+  • Una sola frase de cierre con convicción — no vacía, no genérica
+  Ejemplo de tono: "Tu BB está en 42 — media energía. El padel en media energía trabaja reflejos y resistencia aeróbica, que es exactamente lo que tu fase folicular puede capitalizar ahora. No tienes que llegar en modo competencia — llega en modo juego."
+
+PASO 2 — después del pitch: Pregunta UNA sola vez: "¿La intentamos o prefieres la versión casa hoy?"
+
+PASO 3 — si elige CASA o dice que definitivamente no: Manda la rutina de casa sin drama ni juicio.
+   RUTINA CASA A (glúteos): hip thrust con pesa rusa 3x15, búlgaras 3x10, abducción con banda 3x15, clamshell 3x15, donkey kicks 3x12.
+   RUTINA CASA B (brazos/upper): remo TRX 3x12, curl con ligas 3x15, tríceps TRX 3x12, press TRX 3x10, cuerda 3x30seg.
+
+NUNCA: "deberías ir", "ya hiciste suficiente hoy para no ir", "tu cuerpo ya dio bastante". Esas frases cancelan el movimiento sin intentarlo. El pitch va siempre primero — el descanso es la opción B, no la respuesta automática.
+
+RECETARIO INTELIGENTE — etiquetas y objetivos fisiológicos:
+Cada receta tiene etiquetas de taxonomía estándar. Úsalas al sugerir recetas:
+- Antes del gym → busca etiqueta pre_gym + altos_carbos
+- Después del gym → post_gym + alta_proteina
+- Fase lútea tardía → ideal_lutea_tardia + magnesio + comfort_food
+- Fase menstrual → ideal_menstrual + hierro + vitamina_c
+- Cortisol alto o BB bajo → antiinflamatoria + omega3 + baja_carga_digestiva
+- Fase folicular con entreno fuerte → ideal_folicular + alta_proteina + altos_carbos
+Cuando sugieras qué comer o planear un menú, SIEMPRE sigue este orden obligatorio:
+1. Usa ver_recetario para buscar recetas guardadas que encajen con la fase del ciclo y el momento del día.
+2. Cruza los ingredientes de cada receta con lo que Fernanda mencionó que tiene (lista del mercado, inventario, staples).
+3. Sugiere primero las recetas que puede hacer con lo que ya tiene, y al final lista qué ingredientes le faltarían para las otras opciones.
+NUNCA inventes recetas genéricas si ya tiene algo guardado que encaja. Si el recetario está vacío, entonces sí propone ideas y ofrece guardarlas.
+
+OBJETIVO FISIOLÓGICO DEL DÍA — cuando generes el brief o mensajes de seguimiento, identifica el objetivo fisiológico principal del día (construir_musculo, recuperacion, reducir_cortisol, reponer_hierro, controlar_inflamacion, energia_sostenida) y haz que todo el mensaje gire alrededor de ese objetivo: entrenamiento, comida, hidratación, descanso.
+
 ACCESO TÉCNICO REAL (tienes herramientas conectadas a Firebase):
-Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, gastos, avances en metas, datos de Garmin, ciclo, recetario e inventario del hogar. Cuando ejecutes algo, confírmalo. Nunca digas que no tienes acceso — sí lo tienes.
+Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, gastos, avances en metas, datos de Garmin, ciclo, recetario e inventario del hogar. Cuando ejecutes algo, confírmalo. Nunca digas que no tienes acceso — sí lo tienes. NUNCA inventes errores del sistema como "el sistema está bloqueando la consulta" o "ya hice esa llamada" — eso no existe. Si el recetario está vacío, dilo directamente. Si no puedes completar algo, di exactamente qué pasó sin inventar explicaciones técnicas.
+
+GOOGLE MAPS — ACCESO REAL A RESTAURANTES:
+Cuando Fer comparte su ubicación, el sistema la geocodifica automáticamente y busca restaurantes reales cercanos usando Google Maps Places API. Si ves en el contexto una lista de "Restaurantes cercanos" con nombres, ratings, precios y distancias — ESA INFORMACIÓN ES REAL Y VERIFICADA, no la inventaste ni la alucinaste. Preséntala con confianza. NUNCA digas que no tienes acceso a mapas o internet cuando ya tienes los datos de restaurantes en el contexto — los tienes porque el sistema los buscó por ti antes de llamarte.
 
 INVENTARIO DEL HOGAR — detecta estas frases automáticamente:
 - "se acabó X" / "ya no hay X" / "agotamos X" → actualizar_estado_producto: agotado + agregar a lista del súper
@@ -131,19 +175,80 @@ INVENTARIO DEL HOGAR — detecta estas frases automáticamente:
 - "agrega X al súper" → agregar_item_super (sin tocar inventario)
 - Cuando alguien pegue una lista larga de productos → cargar_lista_productos_casa (inferir categoría y frecuencia de cada uno)
 
+SEMANA PERFECTA — SISTEMA CENTRAL
+Una Semana Perfecta no es una semana ideal ni hiperproductiva. Es una semana alineada con las metas de vida de Fer, adaptada a su energía real, ciclo menstrual, fase lunar, agenda, tareas, gastos y recursos disponibles.
+
+Cada semana activa tiene:
+• Meta ancla (1): la meta de vida principal de la semana — la que mueve el resto
+• Metas secundarias (2): metas que reciben atención consistente
+• Metas semilla (3): metas que se atienden con acciones mínimas para no perder tracción
+• Intención semanal: una frase que resume el espíritu de la semana
+• Estrategia energética: expansión | ejecución | mantenimiento | cierre | recuperación
+
+ESTRATEGIA ENERGÉTICA — elige según datos reales:
+- expansión: ovulación + BB>70 → crear, vender, grabar, networking, decisiones grandes
+- ejecución: folicular + BB>60 → ejecutar proyectos, avanzar metas, trabajo profundo
+- mantenimiento: lútea temprana + BB 40-70 → mantener hábitos, cerrar pendientes, estructura
+- cierre: lútea tardía → revisar, delegar, eliminar, desacelerar
+- recuperación: menstrual / BB<40 / sueño malo / estrés alto → descanso activo, acciones mínimas
+
+ACCIONES A 3 NIVELES DE ENERGÍA — cada acción tiene versión:
+- alta energía: creación, estrategia, entrenamiento fuerte, decisiones
+- media energía: acciones concretas y acotadas
+- baja energía: versión mínima o simbólica — nunca cancela la meta, la transforma
+
+ÍNDICE DE ALINEACIÓN SEMANAL (IAS) — se genera cada domingo al cerrar:
+No mide productividad. Mide: acciones completadas vs propuestas + alineación con meta ancla + respeto a energía del cuerpo + pendientes cerrados + calidad de descanso real.
+
+REGLA: cuando tengas la semana activa guardada, menciona SIEMPRE la meta ancla en el brief de mañana y conecta las acciones del día con ella. Si la energía del día no permite la acción principal, ofrece automáticamente la versión de energía baja sin esperar que te lo pida.
+
 REGLA ABSOLUTA — NUNCA INVENTES NI MIENTAS:
 - Jamás inventes pendientes, tareas, gastos, enfoques o cualquier dato que no venga de una herramienta o de la conversación real.
 - Si ella pregunta qué pendientes tiene (o tareas, gastos, etc.), SIEMPRE llama primero la herramienta correspondiente. Nunca respondas de memoria o "a ojo".
 - Si una herramienta dice que no hay nada, dile honestamente que no hay nada.
 - Si te pregunta algo que no puedes verificar, dile que no lo sabes. Nunca rellenes huecos con suposiciones presentadas como hechos.
 - EXCEPCIÓN: estimaciones que te pide explícitamente ("¿cuántas calorías crees que tiene X?") — sí puedes dar tu mejor estimación, enmarcándola honestamente: "aprox.", "calculo que", "más o menos".
-- ANTI-DUPLICADOS: si ya confirmaste en este mismo hilo que ejecutaste una acción (agregaste tarea, pendiente, gasto, evento, etc.), NO la ejecutes de nuevo aunque Fernanda pregunte "¿lo hiciste?" o "¿quedó?". Responde que sí quedó guardado. Solo ejecuta una herramienta si es una solicitud nueva o si ella pide explícitamente repetirla.`;
+- ANTI-DUPLICADOS (SOLO aplica a acciones de ESCRITURA): si ya confirmaste en este mismo hilo que ejecutaste una acción de escritura (agregaste tarea, pendiente, gasto, evento, etc.), NO la ejecutes de nuevo aunque Fernanda pregunte "¿lo hiciste?" o "¿quedó?". Responde que sí quedó guardado. NUNCA uses esta regla para bloquear preguntas, consultas o lecturas — esas siempre se responden llamando la herramienta correspondiente. Jamás respondas con mensajes sobre "anti-duplicados" o "sistema bloqueado" — eso no existe para el usuario.
+
+MENSAJES AUTOMÁTICOS DEL SISTEMA
+Tienes mensajes programados que se envían solos a horas fijas. Si Fernanda te pide "simula el mensaje de las X" o "¿cómo es el mensaje de las X?", genéralo con los datos del contexto actual. Nunca digas que no puedes simularlos ni que no tienes mensajes programados — sí los tienes.
+
+Horario y contenido de cada mensaje:
+- 7:35am — Daily Brief en DOS partes. Parte 1: encabezado con día/fecha/ciclo, 🔋 sueño y energía (BB/HRV/sueño Garmin), 🌙 ciclo (fase + cómo afecta el día, 2-3 líneas), ✨ luna (MÁXIMO 2 líneas: fase + una idea concreta), ☕ bebida según ciclo+Garmin. Parte 2: 🏊 movimiento del día con ficha fisiológica (qué construye, versión según BB, nutrición pre), hábitos planeados del widget, 🥚 desayuno concreto, 🎯 enfoques y pendientes del día, una línea de motivación real. Cuando lo simules, genera ambas partes juntas con un separador claro entre ellas.
+- 11:25am — Check de mediodía (L-V): cómo va la mañana, ajuste de energía, micro-acción.
+- 2pm — Recalibración: estado del cuerpo, qué pasó en la mañana, UNA prioridad para la tarde, pregunta ¿cómo quieres invertir tu energía? (con botones: construir mi futuro / cuidar mi espacio / cuidarme a mí / cerrar pendientes).
+- 4pm — Recovery Window: estado Garmin (BB, sueño, ciclo) + pregunta ¿cómo fue tu tarde? (con botones: intenso / suave / equitación / voy a entrenar / no entrené). Según el botón: recomendación de recuperación o pre-rendimiento.
+- 6pm — Volcado de memoria: resumen de gastos del día (o pregunta si no hay), limpieza mental: ¿se nos escapó algo? (gasto, pendiente, evento, inventario, receta).
+- 8:30pm — Preparar el mañana: checklist nocturno (perros, Benito, descongelar, ropa entrenamiento), aviso anticipado de lo muy temprano del día siguiente (perros a las 7am solo lunes/miércoles/viernes, NO martes ni jueves), sugerencia de cena.
+- 9:30pm — Cerrar el sistema: sin preguntas, sin abrir loops. Estructura fija: medicamentos, luna (25 palabras), una evidencia concreta del día, qué ayuda al cuerpo ahora (dormir), cierre ritual fijo: "Mañana el sistema vuelve a empezar. Por hoy... ya hiciste suficiente. Buenas noches, Fer. 🤍"
+- Domingo 7pm — IAS + nueva Semana Perfecta: cierre de la semana con puntuación de alineación, propuesta de meta ancla para la semana siguiente.`;
 
 // === HELPERS — MEMORIA Y CONVERSACIÓN ===
 
 async function getDatosImportantes() {
   const snap = await db.collection('memoria').orderBy('timestamp', 'asc').get();
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function guardarUbicacionNombrada(nombre, lat, lng, direccion) {
+  const key = nombre.toLowerCase().replace(/\s+/g, '_');
+  const ref = db.collection('config').doc('ubicaciones');
+  await ref.set({ [key]: { nombre, lat, lng, direccion, guardado: new Date().toISOString() } }, { merge: true });
+}
+
+async function getUbicaciones() {
+  const doc = await db.collection('config').doc('ubicaciones').get();
+  return doc.exists ? doc.data() : {};
+}
+
+// Compat: guardar como "casa" directamente
+async function guardarUbicacionCasa(lat, lng, direccion) {
+  await guardarUbicacionNombrada('casa', lat, lng, direccion);
+}
+
+async function getUbicacionCasa() {
+  const ubs = await getUbicaciones();
+  return ubs.casa || null;
 }
 
 async function guardarDatoImportante(texto) {
@@ -156,6 +261,30 @@ async function guardarDatoImportante(texto) {
 
 async function borrarDatoImportante(id) {
   await db.collection('memoria').doc(id).delete();
+}
+
+async function registrarComida(descripcion, calorias, proteina = 0, carbos = 0, grasas = 0, hora = null) {
+  const fecha = fechaLocalHoy();
+  const horaStr = hora || new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Merida' }).format(new Date());
+  const ref = db.collection('comidas').doc(fecha);
+  const doc = await ref.get();
+  const entries = doc.exists ? (doc.data().entries || []) : [];
+  entries.push({ hora: horaStr, descripcion, calorias: Number(calorias), proteina: Number(proteina), carbos: Number(carbos), grasas: Number(grasas) });
+  const total = entries.reduce((acc, e) => ({
+    calorias: acc.calorias + e.calorias,
+    proteina: acc.proteina + e.proteina,
+    carbos: acc.carbos + e.carbos,
+    grasas: acc.grasas + e.grasas,
+  }), { calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
+  await ref.set({ fecha, entries, total });
+  return { entries, total };
+}
+
+async function getComidaHoy() {
+  const fecha = fechaLocalHoy();
+  const doc = await db.collection('comidas').doc(fecha).get();
+  if (!doc.exists) return { entries: [], total: { calorias: 0, proteina: 0, carbos: 0, grasas: 0 } };
+  return doc.data();
 }
 
 async function guardarMensajeConversacion(role, texto) {
@@ -314,6 +443,29 @@ function fechaLocalHoy(offsetDias = 0) {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Merida' }).format(d);
 }
 
+// Day activation — tracks if user said "buenos días" today
+const _dayActivated = new Map();
+function activarDia(chatId) {
+  const fecha = fechaLocalHoy();
+  _dayActivated.set(String(chatId), fecha);
+  // Persiste a Firebase para sobrevivir reinicios
+  db.collection('estado').doc(`dia_${String(chatId)}`).set({ fecha }).catch(e => console.error('activarDia persist:', e));
+}
+function diaActivadoHoy(chatId) { return _dayActivated.get(String(chatId)) === fechaLocalHoy(); }
+// Al arrancar, carga el día activado de Firebase para no perderlo en reinicios
+(async () => {
+  try {
+    const doc = await db.collection('estado').doc(`dia_${FERNANDA_CHAT_ID}`).get();
+    if (doc.exists && doc.data().fecha === fechaLocalHoy()) {
+      _dayActivated.set(String(FERNANDA_CHAT_ID), fechaLocalHoy());
+      console.log('✅ Día activado restaurado desde Firebase:', fechaLocalHoy());
+    }
+  } catch(e) { console.error('cargarDiaActivado:', e); }
+})();
+function horaLocal() {
+  return new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Merida' }).format(new Date());
+}
+
 async function getDatosGarmin() {
   for (const offset of [0, -1]) {
     const fecha = fechaLocalHoy(offset);
@@ -463,6 +615,51 @@ async function getMetodosPago() {
   } catch { return ['Efectivo', 'Débito', 'Transferencia']; }
 }
 
+async function getResumenSemana() {
+  const weekId = getWeekId();
+  const doc = await wpUser().doc(weekId).get();
+  const workout = doc.exists ? (doc.data().workout || {}) : {};
+  const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+  let entrenamientos = [];
+  for (let i = 0; i <= 6; i++) {
+    const w = workout[i] || {};
+    const acts = [w.wo1, w.wo2].filter(Boolean);
+    if (acts.length) entrenamientos.push(`${dias[i]}: ${acts.join(' + ')}`);
+  }
+
+  const fechaHoy = fechaLocalHoy();
+  const hoy = new Date(fechaHoy + 'T12:00:00');
+  let bbTotal = 0, bbDias = 0, suenoTotal = 0, suenoDias = 0, malSueno = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(hoy);
+    d.setDate(d.getDate() - i);
+    const fecha = d.toISOString().split('T')[0];
+    const gDoc = await wpUser().doc(`garmin_${fecha}`).get().catch(() => null);
+    if (gDoc?.exists) {
+      const g = gDoc.data();
+      if (g.bodyBattery != null) { bbTotal += g.bodyBattery; bbDias++; }
+      if (g.suenoHoras != null) { suenoTotal += g.suenoHoras; suenoDias++; if (g.suenoHoras < 6.5) malSueno++; }
+    }
+  }
+
+  return {
+    entrenamientos,
+    bbProm: bbDias > 0 ? Math.round(bbTotal / bbDias) : null,
+    suenoProm: suenoDias > 0 ? (suenoTotal / suenoDias).toFixed(1) : null,
+    malSueno,
+  };
+}
+
+async function getGastosHoy() {
+  const weekId = getWeekId();
+  const wpDay = wpDayHoy();
+  const doc = await wpUser().doc(weekId).get();
+  if (!doc.exists) return [];
+  return (doc.data().gastos?.[wpDay]) || [];
+}
+
 async function agregarGastoDia(desc, cat, monto, pagoCon) {
   const weekId = getWeekId();
   const wpDay = wpDayHoy();
@@ -563,6 +760,8 @@ async function agregarEventoWP(titulo, hora, durMins = 60, wpDayOverride = null)
   const doc = await wpUser().doc(weekId).get();
   const data = doc.exists ? doc.data() : {};
   const eventos = [...((data.events?.[wpDay]) || [])];
+  const yaExiste = eventos.some(e => e.title.toLowerCase() === titulo.toLowerCase() && e.time === hora);
+  if (yaExiste) return;
   eventos.push({ title: titulo, time: hora, durMins });
   await wpUser().doc(weekId).set({ events: { [wpDay]: eventos } }, { merge: true });
 }
@@ -574,24 +773,220 @@ async function borrarEventoWP(texto, wpDayOverride = null) {
   const data = doc.exists ? doc.data() : {};
   const eventos = [...((data.events?.[wpDay]) || [])];
   const lower = texto.toLowerCase();
-  const idx = eventos.findIndex(e => e.title.toLowerCase().includes(lower));
-  if (idx < 0) return null;
-  const borrado = eventos[idx].title;
-  eventos.splice(idx, 1);
-  await wpUser().doc(weekId).set({ events: { [wpDay]: eventos } }, { merge: true });
+  const borrado = eventos.find(e => e.title.toLowerCase().includes(lower))?.title;
+  if (!borrado) return null;
+  const filtrados = eventos.filter(e => !e.title.toLowerCase().includes(lower));
+  await wpUser().doc(weekId).set({ events: { [wpDay]: filtrados } }, { merge: true });
   return borrado;
 }
 
-async function tacharItemSuperWP(itemTexto, catIndex) {
+async function tacharItemSuperWP(itemTexto, catIndex = null) {
   const cats = await getListaSuperWP();
-  const key = `cat${catIndex}`;
-  const items = [...(cats[key] || [])];
   const lower = itemTexto.toLowerCase();
-  const idx = items.findIndex(it => !it.done && it.text.toLowerCase().includes(lower));
-  if (idx < 0) return false;
-  items[idx] = { ...items[idx], done: true };
-  await wpUser().doc('shopping').update({ [`cats.${key}`]: items });
-  return items[idx].text;
+  // Si no se especifica categoría, busca en todas
+  const indices = catIndex !== null ? [catIndex] : [0, 1, 2, 3];
+  for (const i of indices) {
+    const key = `cat${i}`;
+    const items = [...(cats[key] || [])];
+    const idx = items.findIndex(it => !it.done && it.text.toLowerCase().includes(lower));
+    if (idx >= 0) {
+      items[idx] = { ...items[idx], done: true };
+      await wpUser().doc('shopping').update({ [`cats.${key}`]: items });
+      return items[idx].text;
+    }
+  }
+  return false;
+}
+
+async function borrarItemSuperWP(itemTexto, catIndex = null) {
+  const cats = await getListaSuperWP();
+  const lower = itemTexto.toLowerCase();
+  const indices = catIndex !== null ? [catIndex] : [0, 1, 2, 3];
+  for (const i of indices) {
+    const key = `cat${i}`;
+    const items = [...(cats[key] || [])];
+    const idx = items.findIndex(it => it.text.toLowerCase().includes(lower));
+    if (idx >= 0) {
+      const nombre = items[idx].text;
+      items.splice(idx, 1);
+      await wpUser().doc('shopping').update({ [`cats.${key}`]: items });
+      return nombre;
+    }
+  }
+  return false;
+}
+
+// === TRACKING CORPORAL ===
+
+async function getCuerpoData() {
+  const doc = await wpUser().doc('cuerpo').get();
+  return doc.exists ? doc.data() : { inbody: [], medidas: [], checkins: [] };
+}
+
+async function guardarInbodyWP(datos) {
+  const ref = wpUser().doc('cuerpo');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const data = doc.exists ? doc.data() : {};
+    const inbody = [...(data.inbody || []), { ...datos, registrado: new Date().toISOString() }];
+    t.set(ref, { ...data, inbody });
+  });
+}
+
+async function guardarMedidasWP(datos) {
+  const ref = wpUser().doc('cuerpo');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const data = doc.exists ? doc.data() : {};
+    const medidas = [...(data.medidas || []), { ...datos, fecha: datos.fecha || fechaLocalHoy(), registrado: new Date().toISOString() }];
+    t.set(ref, { ...data, medidas });
+  });
+}
+
+async function guardarCheckinWP(datos) {
+  const ref = wpUser().doc('cuerpo');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const data = doc.exists ? doc.data() : {};
+    const checkins = [...(data.checkins || []), { ...datos, fecha: fechaLocalHoy(), registrado: new Date().toISOString() }];
+    t.set(ref, { ...data, checkins });
+  });
+}
+
+// === STAPLES (inventario base) ===
+
+async function getStaplesWP() {
+  const doc = await wpUser().doc('staples').get();
+  return doc.exists ? (doc.data().items || []) : [];
+}
+
+async function agregarStapleWP(texto, catIndex) {
+  const ref = wpUser().doc('staples');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    const items = doc.exists ? (doc.data().items || []) : [];
+    const lower = texto.toLowerCase().trim();
+    if (!items.find(i => i.text.toLowerCase() === lower)) {
+      items.push({ text: texto.trim(), catIndex });
+      t.set(ref, { items });
+    }
+  });
+}
+
+async function editarWidgetDia(dia, campo, valor) {
+  let weekId = getWeekId();
+  let wpDay = wpDayHoy();
+  if (dia === 'mañana') {
+    wpDay = wpDay + 1;
+    if (wpDay > 6) {
+      // Siguiente semana
+      const fechaHoy = fechaLocalHoy();
+      const manana = new Date(fechaHoy + 'T12:00:00');
+      manana.setDate(manana.getDate() + 1);
+      const jsDay = manana.getDay();
+      wpDay = jsToWpDay(jsDay);
+      const diff = manana.getDate() - jsDay + (jsDay === 0 ? -6 : 1);
+      const monday = new Date(manana);
+      monday.setDate(diff);
+      weekId = 'week_' + monday.toISOString().split('T')[0];
+    }
+  }
+  const ref = wpUser().doc(weekId);
+  await ref.set({ workout: { [wpDay]: { [campo]: valor } } }, { merge: true });
+}
+
+async function borrarStapleWP(texto) {
+  const ref = wpUser().doc('staples');
+  await wpDb.runTransaction(async t => {
+    const doc = await t.get(ref);
+    if (!doc.exists) return;
+    const items = doc.data().items || [];
+    const lower = texto.toLowerCase().trim();
+    const filtered = items.filter(i => !i.text.toLowerCase().includes(lower));
+    t.set(ref, { items: filtered });
+  });
+}
+
+// === SEMANA PERFECTA ===
+
+const METAS_MAP = require('./metas').reduce((m, meta) => { m[meta.id] = meta.nombre; return m; }, {});
+
+async function getSemanaActual() {
+  const doc = await wpUser().doc('semana_perfecta').get();
+  if (!doc.exists) return null;
+  const data = doc.data();
+  if (data.weekId !== getWeekId()) return null; // semana pasada
+  return data;
+}
+
+async function guardarSemanaActual(semana) {
+  await wpUser().doc('semana_perfecta').set({ ...semana, weekId: getWeekId() }, { merge: false });
+}
+
+async function calcularIAS() {
+  const weekId = getWeekId();
+  const semana = await getSemanaActual().catch(() => null);
+
+  // Garmin de los últimos 7 días
+  const garminSemana = [];
+  for (let i = 0; i < 7; i++) {
+    const fecha = fechaLocalHoy(-i);
+    const doc = await wpUser().doc(`garmin_${fecha}`).get();
+    if (doc.exists) garminSemana.push(doc.data());
+  }
+
+  // Avances registrados esta semana
+  const lunesDate = new Date(weekId.replace('week_', '') + 'T06:00:00Z');
+  const avancesSnap = await db.collection('avances').where('timestamp', '>=', lunesDate).get();
+  const avances = avancesSnap.docs.map(d => d.data());
+
+  // Tareas de la semana
+  const weekDoc = await wpUser().doc(weekId).get();
+  const tasks = weekDoc.exists ? (weekDoc.data().tasks || []) : [];
+  const tareasTotal = tasks.length;
+  const tareasDone = tasks.filter(t => t.doneOnDay !== undefined).length;
+
+  // 1. Alineación — avances hacia meta ancla
+  const metaAnclaId = semana?.metaAncla?.id;
+  const avancesAncla = metaAnclaId ? avances.filter(a => a.metaId === metaAnclaId).length : 0;
+  const scoreAlineacion = Math.min(10, avancesAncla >= 4 ? 10 : avancesAncla * 2.5);
+
+  // 2. Energía — Body Battery promedio
+  const bbs = garminSemana.map(g => g.bodyBattery).filter(v => v != null);
+  const avgBB = bbs.length ? Math.round(bbs.reduce((a, b) => a + b, 0) / bbs.length) : null;
+  const scoreEnergia = avgBB != null ? Math.min(10, Math.round((avgBB / 100) * 10 * 10) / 10) : null;
+
+  // 3. Ejecución — tareas completadas
+  const scoreEjecucion = tareasTotal > 0 ? Math.min(10, Math.round((tareasDone / tareasTotal) * 10 * 10) / 10) : 5;
+
+  // 4. Fricción — avances totales como proxy de momentum
+  const scoreFriccion = Math.min(10, avances.length === 0 ? 3 : Math.min(10, 4 + avances.length));
+
+  // 5. Descanso — horas de sueño promedio
+  const suenos = garminSemana.map(g => g.suenoHoras).filter(v => v != null);
+  const avgSueno = suenos.length ? Math.round((suenos.reduce((a, b) => a + b, 0) / suenos.length) * 10) / 10 : null;
+  const scoreDescanso = avgSueno != null ? Math.min(10, Math.round((avgSueno / 8) * 10 * 10) / 10) : null;
+
+  const validos = [scoreAlineacion, scoreEnergia, scoreEjecucion, scoreFriccion, scoreDescanso].filter(v => v != null);
+  const total = validos.length ? Math.round((validos.reduce((a, b) => a + b, 0) / validos.length) * 10) / 10 : null;
+
+  return {
+    total, scoreAlineacion, scoreEnergia, scoreEjecucion, scoreFriccion, scoreDescanso,
+    avancesTotal: avances.length, avancesAncla, avgBB, avgSueno,
+    tareasTotal, tareasDone, metaAncla: semana?.metaAncla?.nombre || null,
+  };
+}
+
+function estrategiaEnergeticaAuto(cicloInfo, garmin) {
+  const fase = cicloInfo?.fase || '';
+  const bb = garmin?.bodyBattery;
+  const stress = garmin?.stress;
+  if (fase === 'Menstrual' || (bb !== null && bb < 35) || (stress !== null && stress > 75)) return 'recuperación';
+  if (fase === 'Lútea Tardía' || (bb !== null && bb < 50)) return 'cierre';
+  if (fase === 'Lútea Temprana') return 'mantenimiento';
+  if (fase === 'Ovulación' && (bb === null || bb > 60)) return 'expansión';
+  if (fase === 'Folicular' && (bb === null || bb > 50)) return 'ejecución';
+  return 'mantenimiento';
 }
 
 async function getEnfoquesDiaWP() {
@@ -602,13 +997,76 @@ async function getEnfoquesDiaWP() {
   return [1, 2, 3].map(n => focusDia[n]).filter(Boolean);
 }
 
+function detectarActividadMovimiento(texto) {
+  if (!texto) return null;
+  const t = texto.toLowerCase();
+  return MOVIMIENTO.find(m => m.keywords.some(k => t.includes(k))) || null;
+}
+
+function versionPorBB(bb) {
+  if (bb === null || bb === undefined) return 'media';
+  if (bb >= 65) return 'alta';
+  if (bb >= 40) return 'media';
+  return 'baja';
+}
+
+async function getWorkoutHabitsHoy() {
+  try {
+    const doc = await wpUser().doc(getWeekId()).get();
+    if (!doc.exists) return { workouts: [], habitos: [] };
+    const wo = doc.data().workout?.[wpDayHoy()] || {};
+    const workouts = [wo.wo1, wo.wo2].filter(Boolean);
+    const habitos = [wo.ha1, wo.ha2].filter(Boolean);
+    return { workouts, habitos };
+  } catch { return { workouts: [], habitos: [] }; }
+}
+
+function calcularCaloriasObjetivo(inbody, garmin, cicloInfo) {
+  if (!inbody?.peso) return null;
+
+  const peso = inbody.peso;
+  const grasaPct = inbody.grasa_pct ?? 28;
+  const lbm = peso * (1 - grasaPct / 100);
+
+  // BMR Katch-McArdle (más preciso con composición corporal real)
+  const bmr = Math.round(370 + (21.6 * lbm));
+
+  // Multiplicador de actividad según BB del día
+  const bb = garmin?.bodyBattery ?? null;
+  let actMult = 1.4; // default moderado
+  if (bb !== null) {
+    if (bb >= 70) actMult = 1.55;
+    else if (bb >= 45) actMult = 1.45;
+    else actMult = 1.35;
+  }
+
+  // Ajuste por fase del ciclo
+  let cicloAjuste = 0;
+  const fase = cicloInfo?.fase ?? '';
+  if (fase.includes('Lútea Tardía')) cicloAjuste = 150;
+  else if (fase.includes('Lútea Temprana')) cicloAjuste = 100;
+  else if (fase.includes('Menstrual')) cicloAjuste = -50;
+
+  const tdee = Math.round(bmr * actMult);
+  const deficit = 350; // déficit suave para bajar grasa sin perder músculo
+  const objetivo = tdee + cicloAjuste - deficit;
+
+  // Macros
+  const proteina = Math.round(lbm * 2.2); // 2.2g/kg masa magra — preserva músculo en déficit
+  const grasas = Math.round(peso * 0.8);
+  const carbos = Math.max(80, Math.round((objetivo - proteina * 4 - grasas * 9) / 4));
+
+  return { bmr, tdee, objetivo, proteina, carbos, grasas, deficit, cicloAjuste, lbm: Math.round(lbm * 10) / 10 };
+}
+
 async function getContextoDia() {
-  const [garmin, cicloDoc, pendientes, tareas, enfoques] = await Promise.all([
+  const [garmin, cicloDoc, pendientes, tareas, enfoques, semana] = await Promise.all([
     getDatosGarmin().catch(() => null),
     getCiclo().catch(() => null),
     getPendientesWP().catch(() => []),
     getTareasHoy().catch(() => []),
     getEnfoquesDiaWP().catch(() => []),
+    getSemanaActual().catch(() => null),
   ]);
   const luna = faseLunar();
   const cicloInfo = cicloDoc?.ultimoInicio
@@ -629,9 +1087,92 @@ async function getContextoDia() {
     ctx += `\nCiclo: día ${cicloInfo.diaCiclo}, fase ${cicloInfo.fase}. Luna: ${luna}.`;
     if (notasCiclo) ctx += `\nNotas personales de Fer sobre su ciclo: ${notasCiclo}`;
   }
+  if (semana) {
+    const estrategia = semana.estrategiaEnergetica || estrategiaEnergeticaAuto(cicloInfo, garmin);
+    ctx += `\n\nSEMANA PERFECTA ACTIVA (${semana.weekId}):`;
+    ctx += `\n• Meta ancla: ${semana.metaAncla?.nombre || semana.metaAncla}`;
+    if (semana.metasSecundarias?.length) ctx += `\n• Secundarias: ${semana.metasSecundarias.map(m => m.nombre || m).join(', ')}`;
+    if (semana.metasSemilla?.length) ctx += `\n• Semilla: ${semana.metasSemilla.map(m => m.nombre || m).join(', ')}`;
+    if (semana.intencionSemanal) ctx += `\n• Intención: "${semana.intencionSemanal}"`;
+    ctx += `\n• Estrategia energética de hoy: ${estrategia}`;
+  }
   if (tareas.length > 0) ctx += `\nTareas de hoy en el planner: ${tareas.slice(0, 5).join(', ')}`;
   if (enfoques.length > 0) ctx += `\nEnfoques del día: ${enfoques.join(' / ')}`;
   if (pendientes.length > 0) ctx += `\nPendientes abiertos (${pendientes.length}): ${pendientes.slice(0, 5).map(p => p.text).join(', ')}`;
+
+  // === COMPOSICIÓN CORPORAL ===
+  const cuerpo = await getCuerpoData().catch(() => null);
+  if (cuerpo) {
+    const ultimoInbody = (cuerpo.inbody || []).slice(-1)[0];
+    const ultimasMedidas = (cuerpo.medidas || []).slice(-1)[0];
+    if (ultimoInbody) {
+      ctx += `\n\nCOMPOSICIÓN CORPORAL (InBody ${ultimoInbody.fecha}): peso ${ultimoInbody.peso}kg, músculo ${ultimoInbody.smm_total ?? 'N/D'}kg (${ultimoInbody.smm_pct ?? 'N/D'}%), grasa ${ultimoInbody.grasa_pct ?? 'N/D'}%`;
+
+      const cals = calcularCaloriasObjetivo(ultimoInbody, garmin, cicloInfo);
+      if (cals) {
+        ctx += `\n\nOBJETIVO CALÓRICO HOY: ${cals.objetivo} kcal`;
+        ctx += `\n• TDEE estimado: ${cals.tdee} kcal · Déficit aplicado: ${cals.deficit} kcal`;
+        if (cals.cicloAjuste !== 0) ctx += ` · Ajuste de ciclo: ${cals.cicloAjuste > 0 ? '+' : ''}${cals.cicloAjuste} kcal (${cicloInfo.fase})`;
+        ctx += `\nMACROS META: Proteína ${cals.proteina}g · Carbos ${cals.carbos}g · Grasas ${cals.grasas}g`;
+        ctx += `\n(Calculado con Katch-McArdle sobre masa magra ${cals.lbm}kg · Meta: déficit sostenible para bajar grasa sin perder músculo)`;
+
+        // Consumo real del día
+        const logHoy = await getComidaHoy().catch(() => null);
+        if (logHoy && logHoy.entries.length > 0) {
+          const t = logHoy.total;
+          const restantes = cals.objetivo - t.calorias;
+          ctx += `\n\nCONSUMO HOY (${logHoy.entries.length} registros):`;
+          for (const e of logHoy.entries) {
+            ctx += `\n  ${e.hora} · ${e.descripcion} · ${e.calorias} kcal`;
+            if (e.proteina || e.carbos || e.grasas) ctx += ` (P:${e.proteina ?? '?'}g C:${e.carbos ?? '?'}g G:${e.grasas ?? '?'}g)`;
+          }
+          ctx += `\nTOTAL CONSUMIDO: ${t.calorias} kcal · P:${t.proteina}g · C:${t.carbos}g · G:${t.grasas}g`;
+          ctx += `\nTE QUEDAN: ${restantes} kcal (${restantes < 0 ? '⚠️ superaste el objetivo' : 'disponibles para el resto del día'})`;
+        } else {
+          ctx += `\nConsumo de hoy: sin registros aún. Puedes decirme qué comiste y lo anoto.`;
+        }
+      }
+    }
+    if (ultimasMedidas) {
+      ctx += `\nÚltimas medidas (${ultimasMedidas.fecha}): cintura ${ultimasMedidas.cintura_ombligo ?? '?'}cm, cadera ${ultimasMedidas.cadera ?? '?'}cm, pecho ${ultimasMedidas.pecho ?? '?'}cm`;
+    }
+    // Aviso de ventana de medidas (folicular día 5-10)
+    if (cicloInfo && cicloInfo.fase === 'Folicular' && cicloInfo.diaCiclo >= 5 && cicloInfo.diaCiclo <= 10) {
+      ctx += `\n⚡ VENTANA DE MEDIDAS: hoy es folicular día ${cicloInfo.diaCiclo} — condiciones ideales para medidas mensuales en ayunas.`;
+    }
+  }
+
+  // === BIBLIOTECA DE MOVIMIENTO + HÁBITOS ===
+  const { workouts, habitos } = await getWorkoutHabitsHoy().catch(() => ({ workouts: [], habitos: [] }));
+  if (workouts.length > 0 || habitos.length > 0) {
+    const bb = garmin?.bodyBattery ?? null;
+    const version = versionPorBB(bb);
+    ctx += `\n\nMOVIMIENTO Y HÁBITOS DE HOY (widget del planner):`;
+    if (workouts.length > 0) {
+      ctx += `\nWorkouts planeados: ${workouts.join(', ')}`;
+      for (const w of workouts) {
+        const ficha = detectarActividadMovimiento(w);
+        if (ficha) {
+          ctx += `\n\n📚 FICHA: ${ficha.nombre.toUpperCase()}`;
+          ctx += `\n• Lo que estamos construyendo: ${ficha.capacidad_principal}`;
+          ctx += `\n• También: ${ficha.capacidades_secundarias.slice(0, 3).join(', ')}`;
+          ctx += `\n• Impacto articular: ${ficha.impacto_articular} | Recuperación: ${ficha.demanda_recuperacion}`;
+          ctx += `\n• Beneficio SNS: ${ficha.beneficio_snc}`;
+          ctx += `\n• Nutrición pre: ${ficha.nutricion_pre}`;
+          ctx += `\n• Nutrición post: ${ficha.nutricion_post}`;
+          ctx += `\n• Versión recomendada hoy (BB ${bb ?? 'N/D'} → ${version}): ${ficha[`version_${version}`]}`;
+          ctx += `\n• Micro-aprendizaje: ${ficha.micro_aprendizaje}`;
+          ctx += `\n• Frase: ${ficha.frase}`;
+        }
+      }
+    }
+    if (habitos.length > 0) {
+      ctx += `\nHábitos planeados hoy: ${habitos.join(', ')}`;
+      const habitosNoche = habitos.filter(h => /dormir|leer|meditar|descansar/i.test(h));
+      if (habitosNoche.length > 0) ctx += ` (hábitos nocturnos: ${habitosNoche.join(', ')})`;
+    }
+  }
+
   return ctx;
 }
 
@@ -822,6 +1363,22 @@ const TOOLS = [
     },
   },
   {
+    name: 'registrar_comida',
+    description: 'Registra lo que Fernanda comió o bebió durante el día, con sus calorías y macros. Úsala cuando mencione que comió, desayunó, almorzó, cenó, tomó un snack, o cualquier alimento. Si no sabe los macros exactos, estímalos razonablemente según el alimento. El registro se acumula durante el día y se usa para calcular calorías restantes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        descripcion: { type: 'string', description: 'Qué comió, ej. "2 huevos revueltos con aguacate y café sin azúcar"' },
+        calorias: { type: 'number', description: 'Calorías estimadas o reales del alimento/comida' },
+        proteina: { type: 'number', description: 'Gramos de proteína estimados (0 si no aplica)' },
+        carbos: { type: 'number', description: 'Gramos de carbohidratos estimados (0 si no aplica)' },
+        grasas: { type: 'number', description: 'Gramos de grasa estimados (0 si no aplica)' },
+        hora: { type: 'string', description: 'Hora en formato HH:MM, ej. "08:30". Omitir para usar la hora actual.' },
+      },
+      required: ['descripcion', 'calorias'],
+    },
+  },
+  {
     name: 'agregar_gasto_dia',
     description: 'Agrega un gasto al widget de gastos del día de Fernanda en su Weekly Planner. Usa esto cuando mencione cualquier gasto, compra o pago. Si falta algún dato (descripción, categoría, monto o forma de pago) pregunta antes de llamarla.',
     input_schema: {
@@ -952,7 +1509,7 @@ const TOOLS = [
   },
   {
     name: 'guardar_receta',
-    description: 'Guarda una receta en Firebase. Infiere AUTOMÁTICAMENTE todos los metadatos — el usuario nunca los escribe. Reglas de inferencia: si tarda <10 min → etiqueta menos_10_min; si proteína >25g → alta_proteina; si <400 kcal → ligera; si se puede refrigerar varios días → meal_prep; tipo_platillo: smoothie si es licuado, ensalada, sopa, guisado, etc. Categorías de momento_ideal: desayuno_rapido, comida_familiar, cena_ligera, snack, meal_prep. SIEMPRE incluir calorias, proteina, costo_aproximado.',
+    description: 'Guarda una receta en Firebase. Infiere AUTOMÁTICAMENTE todos los metadatos — el usuario nunca los escribe. SIEMPRE incluir calorias, proteina, costo_aproximado. Para etiquetas usa la taxonomía estándar: MOMENTO (pre_gym, post_gym, pre_cardio, post_cardio, pre_natacion, pre_equitacion, desayuno, comida, cena, snack), CICLO (ideal_folicular, ideal_ovulacion, ideal_lutea_temprana, ideal_lutea_tardia, ideal_menstrual), PROPIEDADES (alta_proteina, alta_fibra, altos_carbos, alta_saciedad, baja_carga_digestiva, antiinflamatoria, comfort_food, ligera), MICRONUTRIENTES (hierro, magnesio, omega3, vitamina_c, colageno, electrolitos), PREP (rapida, batch_cooking, sin_coccion, menos_10_min, meal_prep), ENERGIA (alta_energia, recuperacion). Asigna TODAS las que apliquen.',
     input_schema: {
       type: 'object',
       properties: {
@@ -968,9 +1525,10 @@ const TOOLS = [
         costo_aproximado: { type: 'string', description: 'Ej: "económica (~$120 MXN)"' },
         tipo_platillo: { type: 'string', description: 'smoothie, ensalada, sopa, guisado, bowl, wrap, omelette, etc.' },
         momento_ideal: { type: 'string', description: 'desayuno_rapido, comida_familiar, cena_ligera, snack, meal_prep' },
-        etiquetas: { type: 'string', description: 'Inferidas: alta_proteina, ligera, menos_10_min, meal_prep, sin_gluten, etc.' },
+        etiquetas: { type: 'array', items: { type: 'string' }, description: 'Array de etiquetas de la taxonomía estándar. Ej: ["post_gym","alta_proteina","ideal_folicular","batch_cooking"]' },
         ingredientes_principales: { type: 'string', description: 'Proteína principal: pollo, res, atun, huevo, etc.' },
-        fase_ciclo: { type: 'string', description: 'Si aplica: folicular, ovulacion, lutea, menstrual' },
+        fase_ciclo: { type: 'array', items: { type: 'string' }, description: 'Fases del ciclo donde es ideal: ["folicular","ovulacion","lutea_temprana","lutea_tardia","menstrual"]' },
+        objetivo_fisiologico: { type: 'string', description: 'Qué objetivo fisiológico apoya: construir_musculo, recuperacion, reducir_cortisol, reponer_hierro, controlar_inflamacion, energia_sostenida, etc.' },
         url: { type: 'string', description: 'URL de origen (opcional)' },
         notas: { type: 'string', description: 'Notas adicionales (opcional)' },
       },
@@ -979,11 +1537,13 @@ const TOOLS = [
   },
   {
     name: 'ver_recetario',
-    description: 'Busca recetas en el recetario de Fernanda y devuelve ingredientes y pasos completos. OBLIGATORIO: úsala siempre que pregunte por una receta, pida una receta específica, quiera saber qué tiene guardado, o cuando diseñes el menú semanal. Usa el campo "buscar" para encontrar una receta por nombre o ingrediente.',
+    description: 'Busca recetas en el recetario. OBLIGATORIO cuando pregunte por recetas, pida el menú semanal, o quiera saber qué cocinar según su ciclo/energía. Filtra por nombre, ingrediente, etiqueta o fase del ciclo.',
     input_schema: {
       type: 'object',
       properties: {
-        buscar: { type: 'string', description: 'Texto para filtrar recetas por nombre o ingrediente (opcional)' },
+        buscar: { type: 'string', description: 'Texto para filtrar por nombre o ingrediente (opcional)' },
+        etiqueta: { type: 'string', description: 'Filtrar por etiqueta: post_gym, ideal_lutea_tardia, magnesio, etc. (opcional)' },
+        fase_ciclo: { type: 'string', description: 'Filtrar por fase del ciclo: folicular, ovulacion, lutea_temprana, lutea_tardia, menstrual (opcional)' },
       },
       required: [],
     },
@@ -1100,16 +1660,162 @@ const TOOLS = [
     },
   },
   {
+    name: 'ver_semana_perfecta',
+    description: 'Lee la Semana Perfecta activa: meta ancla, secundarias, semilla, intención y estrategia energética de esta semana. Úsala cuando Fer pregunte por sus metas de la semana, su plan semanal, o quiera saber en qué está enfocada.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'guardar_semana_perfecta',
+    description: 'Guarda la Semana Perfecta propuesta: meta ancla, 2 metas secundarias, hasta 3 metas semilla, intención semanal y estrategia energética. Úsala después de que Fernanda apruebe o ajuste la propuesta del domingo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        metaAncla: { type: 'object', properties: { id: { type: 'string' }, nombre: { type: 'string' } }, required: ['id', 'nombre'], description: 'La meta principal de la semana' },
+        metasSecundarias: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, nombre: { type: 'string' } } }, description: '2 metas secundarias' },
+        metasSemilla: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, nombre: { type: 'string' } } }, description: 'Hasta 3 metas semilla' },
+        intencionSemanal: { type: 'string', description: 'Frase corta que resume el espíritu de la semana' },
+        estrategiaEnergetica: { type: 'string', enum: ['expansión', 'ejecución', 'mantenimiento', 'cierre', 'recuperación'], description: 'Estrategia según ciclo y energía' },
+      },
+      required: ['metaAncla', 'metasSecundarias', 'metasSemilla', 'intencionSemanal', 'estrategiaEnergetica'],
+    },
+  },
+  {
+    name: 'ver_lista_super',
+    description: 'Lee la lista del súper actual del Weekly Planner de Fernanda, con todos sus ítems por categoría. OBLIGATORIO: úsala siempre que pregunte qué tiene en la lista, qué le falta comprar, o cualquier consulta sobre la lista del súper — nunca respondas sin llamar esta herramienta primero.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
     name: 'tachar_item_super',
-    description: 'Marca un ítem de la lista del súper como comprado.',
+    description: 'Marca un ítem de la lista del súper como comprado (done). Si no sabes la categoría exacta, omítela y buscará en todas.',
     input_schema: {
       type: 'object',
       properties: {
         item: { type: 'string', description: 'Nombre o fragmento del ítem a marcar como comprado' },
-        categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría donde está el ítem' },
+        categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría donde está el ítem (opcional)' },
       },
-      required: ['item', 'categoria'],
+      required: ['item'],
     },
+  },
+  {
+    name: 'borrar_item_super',
+    description: 'Elimina por completo un ítem de la lista del súper (no solo lo tacha, lo borra). Úsala cuando Fernanda diga "quita", "elimina", "borra" un ítem de la lista.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Nombre o fragmento del ítem a eliminar' },
+        categoria: { type: 'string', enum: SHOP_CATS, description: 'Categoría donde está el ítem (opcional)' },
+      },
+      required: ['item'],
+    },
+  },
+  {
+    name: 'ver_historial_cuerpo',
+    description: 'Muestra el historial de composición corporal de Fernanda: estudios InBody, medidas físicas mensuales y check-ins semanales. Úsalo para analizar progreso o antes de dar consejos de nutrición/ejercicio.',
+    input_schema: { type: 'object', properties: { tipo: { type: 'string', enum: ['inbody', 'medidas', 'checkins', 'todo'], description: 'Qué historial mostrar' } }, required: ['tipo'] },
+  },
+  {
+    name: 'guardar_inbody',
+    description: 'Guarda un estudio InBody de composición corporal con todos sus datos.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fecha: { type: 'string', description: 'Fecha del estudio YYYY-MM-DD' },
+        peso: { type: 'number', description: 'Peso en kg' },
+        altura: { type: 'number', description: 'Altura en cm' },
+        imc: { type: 'number', description: 'IMC kg/m²' },
+        smm_total: { type: 'number', description: 'Masa muscular esquelética total en kg' },
+        smm_pct: { type: 'number', description: '% de músculo' },
+        grasa_pct: { type: 'number', description: '% grasa corporal' },
+        grasa_kg: { type: 'number', description: 'Grasa en kg' },
+        agua_pct: { type: 'number', description: '% agua corporal' },
+        metabolismo_basal: { type: 'number', description: 'Metabolismo basal en kcal' },
+        grasa_visceral: { type: 'number', description: 'Nivel de grasa visceral' },
+        smm_brazo_der: { type: 'number' }, smm_brazo_izq: { type: 'number' },
+        smm_torso: { type: 'number' }, smm_pierna_der: { type: 'number' }, smm_pierna_izq: { type: 'number' },
+        notas: { type: 'string', description: 'Notas adicionales (fase ciclo, condiciones)' },
+      },
+      required: ['fecha', 'peso'],
+    },
+  },
+  {
+    name: 'guardar_medidas',
+    description: 'Guarda medidas físicas mensuales de Fernanda (cintura, cadera, pecho, brazos, muslos, etc.).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fecha: { type: 'string', description: 'Fecha YYYY-MM-DD' },
+        cintura_alta: { type: 'number' }, cintura_ombligo: { type: 'number' },
+        cadera: { type: 'number' }, pecho: { type: 'number' },
+        brazo_der: { type: 'number' }, brazo_izq: { type: 'number' },
+        muslo_der: { type: 'number' }, muslo_izq: { type: 'number' },
+        pantorrilla_der: { type: 'number' }, pantorrilla_izq: { type: 'number' },
+        peso: { type: 'number' },
+        ropa: { type: 'string', description: 'Cómo le queda la ropa' },
+        inflamacion: { type: 'number', description: '1-5' },
+        notas: { type: 'string' },
+        fase_ciclo: { type: 'string' }, dia_ciclo: { type: 'number' },
+      },
+      required: ['fecha'],
+    },
+  },
+  {
+    name: 'guardar_checkin_semanal',
+    description: 'Guarda el check-in semanal de cuerpo del viernes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ropa: { type: 'string', description: 'Cómo le queda la ropa esta semana' },
+        inflamacion: { type: 'number', description: '1-5' },
+        energia: { type: 'number', description: '1-5' },
+        fuerza: { type: 'number', description: '1-5' },
+        entrenamientos: { type: 'string', description: '¿Cumplió sus entrenamientos?' },
+        proteina: { type: 'string', description: '¿Cómo estuvo la proteína?' },
+        notas: { type: 'string' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'ver_staples',
+    description: 'Muestra la lista de staples (artículos base que Fernanda siempre debe tener en casa). Útil para saber qué tiene disponible para cocinar.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'agregar_staple',
+    description: 'Agrega un artículo a los staples de Fernanda (cosas que siempre tiene en casa). Usa catIndex: 0 para Mercado, 1 para Supermercado.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Nombre del artículo' },
+        catIndex: { type: 'number', description: '0=Mercado, 1=Supermercado', enum: [0, 1] },
+      },
+      required: ['item', 'catIndex'],
+    },
+  },
+  {
+    name: 'borrar_staple',
+    description: 'Elimina un artículo de los staples de Fernanda.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item: { type: 'string', description: 'Nombre o fragmento del artículo a eliminar' },
+      },
+      required: ['item'],
+    },
+  },
+  {
+    name: 'editar_widget',
+    description: 'Edita el widget de workouts y hábitos del Weekly Planner para un día específico. Workouts válidos: gym, pilates, natación, equitación, yoga, tennis, padel, escalar, apnea. Hábitos válidos: escribir, gratitud, leer, meditar, practicar violin, suplementos, dormirse temprano, dormir 8 horas, tomar agua. Para quitar un valor usa "". wo1/ha1 = mañana, wo2/ha2 = noche.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        dia: { type: 'string', description: 'Día a editar: "hoy" o "mañana"' },
+        campo: { type: 'string', enum: ['wo1', 'wo2', 'ha1', 'ha2'], description: 'wo1=workout mañana, wo2=workout noche, ha1=hábito mañana, ha2=hábito noche' },
+        valor: { type: 'string', description: 'Valor a guardar. String vacío "" para quitar.' },
+      },
+      required: ['dia', 'campo', 'valor'],
+    },
+    cache_control: { type: 'ephemeral' },
   },
 ];
 
@@ -1144,7 +1850,7 @@ function _yaCorrió(nombre, input) {
   return false;
 }
 // Tools de solo lectura que sí pueden correr múltiples veces
-const TOOLS_LECTURA = new Set(['ver_pendientes','ver_agenda_dia','ver_datos_garmin','ver_ciclo_luna','ver_lista_super']);
+const TOOLS_LECTURA = new Set(['ver_pendientes','ver_agenda_dia','ver_datos_garmin','ver_ciclo_luna','ver_lista_super','ver_inventario_casa','ver_staples','ver_historial_cuerpo']);
 
 async function ejecutarHerramienta(nombre, input) {
   if (!TOOLS_LECTURA.has(nombre) && _yaCorrió(nombre, input)) {
@@ -1190,6 +1896,22 @@ async function ejecutarHerramienta(nombre, input) {
     case 'guardar_dato_importante':
       await guardarDatoImportante(input.texto);
       return { resultado: `Guardado en memoria: "${input.texto}"`, etiqueta: 'dato guardado en memoria ✓' };
+
+    case 'registrar_comida': {
+      const log = await registrarComida(
+        input.descripcion,
+        input.calorias,
+        input.proteina || 0,
+        input.carbos || 0,
+        input.grasas || 0,
+        input.hora || null,
+      );
+      const t = log.total;
+      return {
+        resultado: `Registrado: "${input.descripcion}" — ${input.calorias} kcal. Total hoy: ${t.calorias} kcal (P:${t.proteina}g C:${t.carbos}g G:${t.grasas}g)`,
+        etiqueta: `${input.calorias} kcal registradas ✓`,
+      };
+    }
 
     case 'agregar_gasto_dia': {
       const gastoCats = await getGastoCats();
@@ -1268,7 +1990,7 @@ async function ejecutarHerramienta(nombre, input) {
         ingredientes: input.ingredientes,
         pasos: input.preparacion || '',
         url: input.url || '',
-        tags: input.etiquetas || '',
+        tags: Array.isArray(input.etiquetas) ? input.etiquetas : (input.etiquetas ? [input.etiquetas] : []),
         calorias: input.calorias || '',
         costo: input.costo_aproximado || '',
         tiempo_minutos: input.tiempo_minutos || null,
@@ -1279,7 +2001,8 @@ async function ejecutarHerramienta(nombre, input) {
         tipo_platillo: input.tipo_platillo || '',
         momento_ideal: input.momento_ideal || '',
         ingredientes_principales: input.ingredientes_principales || '',
-        fase_ciclo: input.fase_ciclo || '',
+        fase_ciclo: Array.isArray(input.fase_ciclo) ? input.fase_ciclo : (input.fase_ciclo ? [input.fase_ciclo] : []),
+        objetivo_fisiologico: input.objetivo_fisiologico || '',
         notas: input.notas || '',
       });
       return { resultado: `Receta "${input.nombre}" guardada en el recetario.`, etiqueta: `"${input.nombre}" guardada en recetario ✓` };
@@ -1289,9 +2012,16 @@ async function ejecutarHerramienta(nombre, input) {
       const recetas = await getRecetarioWP();
       if (recetas.length === 0) return { resultado: 'El recetario está vacío todavía.', etiqueta: null };
       const filtro = input.buscar?.toLowerCase();
-      const lista = recetas.filter(r =>
-        !filtro || r.nombre.toLowerCase().includes(filtro) || (r.ingredientes || '').toLowerCase().includes(filtro) || (r.tags || '').toLowerCase().includes(filtro)
-      );
+      const filtroEtiqueta = input.etiqueta?.toLowerCase();
+      const filtroFase = input.fase_ciclo?.toLowerCase();
+      const lista = recetas.filter(r => {
+        const tagsArr = Array.isArray(r.tags) ? r.tags : (r.tags ? [r.tags] : []);
+        const fasesArr = Array.isArray(r.fase_ciclo) ? r.fase_ciclo : (r.fase_ciclo ? [r.fase_ciclo] : []);
+        if (filtro && !r.nombre.toLowerCase().includes(filtro) && !(r.ingredientes || '').toLowerCase().includes(filtro) && !tagsArr.some(t => t.toLowerCase().includes(filtro))) return false;
+        if (filtroEtiqueta && !tagsArr.some(t => t.toLowerCase().includes(filtroEtiqueta))) return false;
+        if (filtroFase && !fasesArr.some(f => f.toLowerCase().includes(filtroFase))) return false;
+        return true;
+      });
       if (lista.length === 0) return { resultado: `No encontré recetas con "${input.buscar}".`, etiqueta: null };
       // Solo muestra receta completa si hay exactamente UNA coincidencia
       if (lista.length === 1) {
@@ -1402,12 +2132,124 @@ async function ejecutarHerramienta(nombre, input) {
       return { resultado: `Enfoque borrado: "${borrado}"`, etiqueta: `"${borrado}" eliminado ✓` };
     }
 
+    case 'ver_semana_perfecta': {
+      const semana = await getSemanaActual();
+      if (!semana) return { resultado: 'No hay Semana Perfecta guardada para esta semana. Puedes generarla ahora.', etiqueta: null };
+      let r = `Semana Perfecta (${semana.weekId}):\n`;
+      r += `• Meta ancla: ${semana.metaAncla?.nombre}\n`;
+      r += `• Secundarias: ${(semana.metasSecundarias || []).map(m => m.nombre).join(', ')}\n`;
+      r += `• Semilla: ${(semana.metasSemilla || []).map(m => m.nombre).join(', ')}\n`;
+      r += `• Intención: "${semana.intencionSemanal}"\n`;
+      r += `• Estrategia: ${semana.estrategiaEnergetica}`;
+      return { resultado: r, etiqueta: null };
+    }
+
+    case 'guardar_semana_perfecta': {
+      await guardarSemanaActual({
+        metaAncla: input.metaAncla,
+        metasSecundarias: input.metasSecundarias,
+        metasSemilla: input.metasSemilla,
+        intencionSemanal: input.intencionSemanal,
+        estrategiaEnergetica: input.estrategiaEnergetica,
+        generadaEn: new Date().toISOString(),
+      });
+      return { resultado: `Semana Perfecta guardada ✓\nMeta ancla: ${input.metaAncla.nombre}\nIntención: "${input.intencionSemanal}"\nEstrategia: ${input.estrategiaEnergetica}`, etiqueta: 'Semana Perfecta guardada ✓' };
+    }
+
+    case 'ver_lista_super': {
+      const cats = await getListaSuperWP();
+      let resultado = '';
+      let total = 0;
+      SHOP_CATS.forEach((nombre, i) => {
+        const pendientes = (cats[`cat${i}`] || []).filter(it => !it.done);
+        const comprados = (cats[`cat${i}`] || []).filter(it => it.done);
+        if (pendientes.length > 0 || comprados.length > 0) {
+          resultado += `\n${nombre}:\n`;
+          pendientes.forEach(it => { resultado += `  ☐ ${it.text}\n`; total++; });
+          comprados.forEach(it => { resultado += `  ✓ ${it.text} (comprado)\n`; });
+        }
+      });
+      if (!resultado) return { resultado: 'La lista del súper está vacía.', etiqueta: null };
+      return { resultado: `Lista del súper (${total} pendientes):\n${resultado}`, etiqueta: null };
+    }
+
     case 'tachar_item_super': {
-      const catIdx = SHOP_CATS.findIndex(c => c.toLowerCase() === String(input.categoria).toLowerCase());
-      const idx = catIdx >= 0 ? catIdx : 0;
-      const tachado = await tacharItemSuperWP(input.item, idx);
-      if (!tachado) return { resultado: `No encontré "${input.item}" en ${SHOP_CATS[idx]}.`, etiqueta: null };
-      return { resultado: `"${tachado}" marcado como comprado`, etiqueta: `${tachado} comprado ✓` };
+      const catIdx = input.categoria
+        ? SHOP_CATS.findIndex(c => c.toLowerCase() === String(input.categoria).toLowerCase())
+        : null;
+      const tachado = await tacharItemSuperWP(input.item, catIdx >= 0 ? catIdx : null);
+      if (!tachado) return { resultado: `No encontré "${input.item}" en la lista.`, etiqueta: null };
+      return { resultado: `"${tachado}" marcado como comprado ✓`, etiqueta: `${tachado} comprado ✓` };
+    }
+
+    case 'borrar_item_super': {
+      const catIdx = input.categoria
+        ? SHOP_CATS.findIndex(c => c.toLowerCase() === String(input.categoria).toLowerCase())
+        : null;
+      const borrado = await borrarItemSuperWP(input.item, catIdx >= 0 ? catIdx : null);
+      if (!borrado) return { resultado: `No encontré "${input.item}" en la lista.`, etiqueta: null };
+      return { resultado: `"${borrado}" eliminado de la lista`, etiqueta: `${borrado} eliminado ✓` };
+    }
+
+    case 'ver_historial_cuerpo': {
+      const cuerpo = await getCuerpoData();
+      const tipo = input.tipo || 'todo';
+      let resultado = '';
+      if (tipo === 'inbody' || tipo === 'todo') {
+        const ib = cuerpo.inbody || [];
+        if (ib.length) resultado += `InBody (${ib.length} estudios):\n` + ib.map(e => `  ${e.fecha}: ${e.peso}kg, IMC ${e.imc}, músculo ${e.smm_total}kg (${e.smm_pct}%), grasa ${e.grasa_pct ?? 'N/D'}%`).join('\n') + '\n';
+      }
+      if (tipo === 'medidas' || tipo === 'todo') {
+        const med = cuerpo.medidas || [];
+        if (med.length) resultado += `\nMedidas (${med.length} registros):\n` + med.map(m => `  ${m.fecha}: cintura ${m.cintura_ombligo ?? '?'}cm, cadera ${m.cadera ?? '?'}cm, pecho ${m.pecho ?? '?'}cm`).join('\n') + '\n';
+      }
+      if (tipo === 'checkins' || tipo === 'todo') {
+        const ch = (cuerpo.checkins || []).slice(-4);
+        if (ch.length) resultado += `\nCheck-ins recientes (${ch.length}):\n` + ch.map(c => `  ${c.fecha}: energía ${c.energia}/5, inflamación ${c.inflamacion}/5, fuerza ${c.fuerza}/5`).join('\n');
+      }
+      if (!resultado) resultado = 'Sin datos de composición corporal registrados todavía.';
+      return { resultado, etiqueta: null };
+    }
+
+    case 'guardar_inbody': {
+      await guardarInbodyWP(input);
+      return { resultado: `InBody del ${input.fecha} guardado. Peso: ${input.peso}kg, músculo: ${input.smm_total ?? 'N/D'}kg.`, etiqueta: `InBody ${input.fecha} guardado ✓` };
+    }
+
+    case 'guardar_medidas': {
+      await guardarMedidasWP(input);
+      return { resultado: `Medidas del ${input.fecha} guardadas.`, etiqueta: `Medidas ${input.fecha} guardadas ✓` };
+    }
+
+    case 'guardar_checkin_semanal': {
+      await guardarCheckinWP(input);
+      return { resultado: `Check-in semanal guardado. Energía: ${input.energia}/5, inflamación: ${input.inflamacion}/5.`, etiqueta: `Check-in guardado ✓` };
+    }
+
+    case 'ver_staples': {
+      const staples = await getStaplesWP();
+      if (!staples.length) return { resultado: 'No hay staples guardados. Puedes agregar con "agrega X a mis staples".', etiqueta: null };
+      const lista = staples.map(s => `• ${s.text} (${SHOP_CATS[s.catIndex] || 'Supermercado'})`).join('\n');
+      return { resultado: `Staples (${staples.length} artículos base):\n${lista}`, etiqueta: null };
+    }
+
+    case 'agregar_staple': {
+      const cat = Number(input.catIndex) === 0 ? 0 : 1;
+      await agregarStapleWP(input.item, cat);
+      return { resultado: `"${input.item}" agregado a staples (${SHOP_CATS[cat]})`, etiqueta: `${input.item} en staples ✓` };
+    }
+
+    case 'borrar_staple': {
+      await borrarStapleWP(input.item);
+      return { resultado: `"${input.item}" eliminado de staples`, etiqueta: `${input.item} quitado de staples` };
+    }
+
+    case 'editar_widget': {
+      const camposLabel = { wo1: 'workout mañana', wo2: 'workout noche', ha1: 'hábito mañana', ha2: 'hábito noche' };
+      await editarWidgetDia(input.dia, input.campo, input.valor);
+      const label = camposLabel[input.campo] || input.campo;
+      const val = input.valor || '(ninguno)';
+      return { resultado: `Widget actualizado: ${label} de ${input.dia} → ${val}`, etiqueta: `Widget: ${label} = ${val}` };
     }
 
     default:
@@ -1435,39 +2277,46 @@ async function llamarClaudeConMemoria(userMessage, extraCtx = '') {
   try {
     const [datos, historial, gastoCats, metodosPago, ctxDia] = await Promise.all([
       getDatosImportantes(),
-      getHistorialReciente(30),
+      getHistorialReciente(18),
       getGastoCats(),
       getMetodosPago(),
       getContextoDia(),
     ]);
 
-    let systemFinal = SYSTEM_PROMPT;
-    systemFinal += `\n\n## Opciones para gastos del día:\n- Rubros: ${gastoCats.join(', ')}\n- Formas de pago: ${metodosPago.join(', ')}`;
+    let dynamicSystem = `## Opciones para gastos del día:\n- Rubros: ${gastoCats.join(', ')}\n- Formas de pago: ${metodosPago.join(', ')}`;
     if (ctxDia) {
-      systemFinal += `\n\n## Estado actual de Fer (datos en tiempo real):${ctxDia}`;
+      dynamicSystem += `\n\n## Estado actual de Fer (datos en tiempo real):${ctxDia}`;
     }
     if (datos.length > 0) {
-      systemFinal += '\n\n## Lo que recuerdas de Fernanda (datos importantes guardados):\n'
+      dynamicSystem += '\n\n## Lo que recuerdas de Fernanda (datos importantes guardados):\n'
         + datos.map(d => `- ${d.texto}`).join('\n');
     }
     if (extraCtx) {
-      systemFinal += '\n\nContexto adicional:\n' + extraCtx;
+      dynamicSystem += '\n\nContexto adicional:\n' + extraCtx;
     }
+    const systemBlocks = [
+      { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: dynamicSystem },
+    ];
+
+    // Filtrar mensajes del historial donde el bot dijo incorrectamente que no tiene acceso a mapas
+    const MAL_INFO_REGEX = /no tengo acceso a (internet|mapas|el mapa)|no puedo buscar restaurantes|no puedo ver.*mapa|no puedo encontrar.*lugar|busca en google maps|abre uber eats|abre rappi.*filtras|los inventé|inventé esos restaurantes/i;
+    const historialFiltrado = historial.filter(m => !(m.role === 'assistant' && MAL_INFO_REGEX.test(m.texto)));
 
     let messages = [
-      ...historial.map(m => ({ role: m.role, content: m.texto })),
+      ...historialFiltrado.map(m => ({ role: m.role, content: m.texto })),
       { role: 'user', content: userMessage },
     ];
 
     let texto = '';
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        system: systemFinal,
+        max_tokens: 2500,
+        system: systemBlocks,
         tools: TOOLS,
         messages,
-      });
+      }, { headers: { 'anthropic-beta': 'prompt-caching-2024-07-31' } });
 
       const textBlock = response.content.find(b => b.type === 'text');
       if (textBlock) texto = textBlock.text;
@@ -1586,13 +2435,12 @@ bot.onText(/\/avance/, (msg) => iniciarAvance(msg.chat.id));
 async function generarAcciones(chatId) {
   await bot.sendMessage(chatId, '💪 Generando acciones...');
   try {
-    const hoy = new Date();
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diaHoy = dias[hoy.getDay()];
+    const diaHoy = dias[new Date(fechaLocalHoy() + 'T12:00:00').getDay()];
     const entrenamientosHoy = {
       Lunes: 'gym 6am',
-      Martes: 'tennis 5am, natación 8am, equitación 4:30pm',
-      Jueves: 'tennis 5am, natación 8am, equitación 4:30pm',
+      Martes: 'tennis 5am, natación 8am',
+      Jueves: 'tennis 5am, natación 8am',
     };
     const entHoy = entrenamientosHoy[diaHoy] || 'sin entrenamiento programado';
     const tareas = await getTareasHoy();
@@ -1689,6 +2537,7 @@ async function mostrarSuper(chatId) {
 }
 bot.onText(/\/super/, (msg) => mostrarSuper(msg.chat.id));
 
+
 async function mostrarCatsSuper(chatId) {
   const botones = SHOP_CATS.map((cat, i) => [{ text: cat, callback_data: `super_cat_${i}` }]);
   botones.push([{ text: '← Lista', callback_data: 'cmd_super' }]);
@@ -1769,6 +2618,92 @@ Formato limpio, español mexicano natural.`;
 }
 bot.onText(/\/recetas/, (msg) => generarRecetas(msg.chat.id));
 
+bot.onText(/\/staples/, async (msg) => {
+  const chatId = msg.chat.id;
+  const items = await getStaplesWP();
+  if (items.length === 0) {
+    await bot.sendMessage(chatId, '📦 No tienes staples guardados todavía.\n\nDile al bot: _"agrega arroz a mis staples de mercado"_ o _"agrega leche a mis staples de supermercado"_', { parse_mode: 'Markdown' });
+    return;
+  }
+  const lista = items.map(i => `• ${i.text} _(${SHOP_CATS[i.catIndex] || 'Supermercado'})_`).join('\n');
+  await bot.sendMessage(chatId, `📦 *Tus staples (${items.length}):*\n${lista}\n\nToca el botón para agregarlos todos a tus listas. Luego borra los que ya tengas en casa.`, {
+    parse_mode: 'Markdown',
+    reply_markup: { inline_keyboard: [
+      [{ text: '🛒 Agregar todos a Mercado y Súper', callback_data: 'staples_a_super' }],
+    ]},
+  });
+});
+
+bot.onText(/\/menu/, async (msg) => {
+  const chatId = msg.chat.id;
+  const intro = await generarMensajeAutomatico(
+    'Genera el encabezado del menú semanal. En 2 líneas máximo: fase del ciclo actual, estrategia energética, días de entrenamiento intenso esta semana. Termina con: "¿Cuántas comidas planeamos?" — NADA MÁS.'
+  );
+  if (intro) await bot.sendMessage(chatId, intro, {
+    parse_mode: 'Markdown',
+    reply_markup: { inline_keyboard: [
+      [{ text: '3', callback_data: 'menu_n_3' }, { text: '4', callback_data: 'menu_n_4' }, { text: '5', callback_data: 'menu_n_5' }],
+      [{ text: '6', callback_data: 'menu_n_6' }, { text: '7', callback_data: 'menu_n_7' }, { text: '8', callback_data: 'menu_n_8' }],
+    ]},
+  });
+});
+
+bot.onText(/\/retagrecetas/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendMessage(chatId, '🏷️ Reetiquetando recetas con el nuevo sistema...');
+  try {
+    const recetas = await getRecetarioWP();
+    if (recetas.length === 0) { await bot.sendMessage(chatId, 'No hay recetas.'); return; }
+
+    let actualizadas = 0;
+    for (const r of recetas) {
+      const prompt = `Eres un experto en nutrición deportiva y salud femenina. Analiza esta receta y asígnale etiquetas de la taxonomía estándar.
+
+RECETA: ${r.nombre}
+INGREDIENTES: ${r.ingredientes}
+MACROS: proteína ${r.proteina || 'N/D'}, carbos ${r.carbohidratos || 'N/D'}, grasas ${r.grasas || 'N/D'}, calorías ${r.calorias || 'N/D'}
+TIPO: ${r.tipo_platillo || 'N/D'}
+
+TAXONOMÍA (usa solo estas):
+Momento: pre_gym, post_gym, pre_cardio, post_cardio, pre_natacion, pre_equitacion, desayuno, comida, cena, snack
+Ciclo: ideal_folicular, ideal_ovulacion, ideal_lutea_temprana, ideal_lutea_tardia, ideal_menstrual
+Propiedades: alta_proteina, alta_fibra, altos_carbos, alta_saciedad, baja_carga_digestiva, antiinflamatoria, comfort_food, ligera
+Micronutrientes: hierro, magnesio, omega3, vitamina_c, colageno, electrolitos
+Prep: rapida, batch_cooking, sin_coccion, menos_10_min, meal_prep
+Energía: alta_energia, recuperacion
+
+Responde SOLO con JSON válido:
+{"etiquetas": ["tag1","tag2",...], "fase_ciclo": ["fase1",...], "objetivo_fisiologico": "uno_de_estos"}`;
+
+      const res = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const texto = res.content.find(b => b.type === 'text')?.text || '';
+      const jsonMatch = texto.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      const ref = wpUser().doc('recetario');
+      await wpDb.runTransaction(async t => {
+        const doc = await t.get(ref);
+        if (!doc.exists) return;
+        const recetas2 = doc.data().recetas || [];
+        const idx = recetas2.findIndex(x => x.nombre.toLowerCase().trim() === r.nombre.toLowerCase().trim());
+        if (idx < 0) return;
+        recetas2[idx] = { ...recetas2[idx], tags: parsed.etiquetas || [], fase_ciclo: parsed.fase_ciclo || [], objetivo_fisiologico: parsed.objetivo_fisiologico || '' };
+        t.update(ref, { recetas: recetas2 });
+      });
+      actualizadas++;
+    }
+    await bot.sendMessage(chatId, `✅ ${actualizadas}/${recetas.length} recetas reetiquetadas con el nuevo sistema.`);
+  } catch (e) {
+    console.error('retagrecetas error:', e);
+    await bot.sendMessage(chatId, 'Error reetiquetando: ' + e.message);
+  }
+});
+
 async function checkinEmocional(chatId) {
   userState[chatId] = { modo: 'como' };
   await bot.sendMessage(chatId, '😮‍💨 ¿Cómo estás ahorita, en serio? Escribe lo que es.');
@@ -1841,6 +2776,36 @@ bot.on('callback_query', async (query) => {
     await iniciarTarea(chatId);
   } else if (data === 'cmd_datos') {
     await mostrarDatos(chatId);
+
+  // LOCATION MENU
+  } else if (data === 'loc_restaurantes') {
+    const loc = _pendingLocation.get(chatId);
+    if (!loc) { await bot.sendMessage(chatId, 'La sesión expiró. Manda tu ubicación de nuevo.'); return; }
+    _pendingLocation.delete(chatId);
+    try { await bot.editMessageText(`📍 *${loc.lugar.split(',')[0]}*\n\n🍽️ Buscando restaurantes...`, { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' }); } catch {}
+    const lugares = await buscarLugaresCercanos(loc.lat, loc.lng, 'restaurant', 5000);
+    await enviarResultadosLugares(chatId, loc.lat, loc.lng, loc.lugar, lugares, 'restaurantes');
+
+  } else if (data === 'loc_comercio') {
+    const loc = _pendingLocation.get(chatId);
+    if (!loc) { await bot.sendMessage(chatId, 'La sesión expiró. Manda tu ubicación de nuevo.'); return; }
+    userState[chatId] = { modo: 'loc_comercio_query', ...loc };
+    try { await bot.editMessageText('🏪 ¿Qué tipo de negocio buscas?\n\n_Ej: farmacia, banco, zapatero, gym, papelería, veterinaria..._', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' }); } catch {}
+
+  } else if (data === 'loc_ruta') {
+    const loc = _pendingLocation.get(chatId);
+    if (!loc) { await bot.sendMessage(chatId, 'La sesión expiró. Manda tu ubicación de nuevo.'); return; }
+    userState[chatId] = { modo: 'loc_ruta_query', ...loc };
+    try { await bot.editMessageText('🗺️ Lista tus paradas y te armo la ruta optimizada.\n\n_Ej: Banamex, zapatero del Walmart, OXXO_', { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' }); } catch {}
+
+  } else if (data === 'loc_guardar_lugar') {
+    const loc = _pendingLocation.get(chatId);
+    if (!loc) { await bot.sendMessage(chatId, 'La sesión expiró. Manda tu ubicación de nuevo.'); return; }
+    userState[chatId] = { modo: 'loc_nombre_lugar', ...loc };
+    try { await bot.editMessageText(`💾 ¿Cómo se llama este lugar?\n\n_Ej: casa, oficina, casa mamá, gym, casa Fer Avelar..._`, { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' }); } catch {
+      await bot.sendMessage(chatId, '💾 ¿Cómo se llama este lugar? (ej: casa, oficina, casa mamá)');
+    }
+
   } else if (data.startsWith('borrar_dato_')) {
     const datoId = data.replace('borrar_dato_', '');
     await borrarDatoImportante(datoId);
@@ -1934,6 +2899,166 @@ bot.on('callback_query', async (query) => {
       }
     }
 
+  // RECALIBRACIÓN 2PM — botones de decisión
+  } else if (data.startsWith('recal_')) {
+    const modo = data.replace('recal_', '');
+    const instrucciones = {
+      construir:   'Fer acaba de elegir CONSTRUIR SU FUTURO para esta tarde. Con base en su Semana Perfecta activa (meta ancla), su energía actual (Garmin) y su fase del ciclo, dale UNA acción concreta, específica y realizable en esta tarde. Si su energía es alta: acción de creación o estrategia. Si es media: ejecución acotada (45 min max). Si es baja: versión mínima o simbólica que igual avanza la meta. Sé directa: "Tu acción de esta tarde es X. Empieza así: [primer paso]." Sin lista, sin opciones — una sola cosa.',
+      casa:        'Fer acaba de elegir CUIDAR SU ESPACIO para esta tarde. Revisa sus pendientes y contexto. Sugiere UNA tarea específica de casa realizable en 20-40 minutos — puede ser cocina, lavadora, tender, organizar un espacio, descongelar algo para mañana, preparar ropa del entrenamiento. Que sea concreta: "Haz X. Te toma 25 min y mañana lo agradecerás porque Y." Sin lista.',
+      cuidarme:    'Fer acaba de elegir CUIDARSE A SÍ MISMA para esta tarde. Con base en su ciclo, Garmin y hora del día, sugiere UNA acción de autocuidado específica y real: puede ser siesta 20 min, baño con sales, salir a caminar 15 min, yoga suave, jardín con audiolibro, snack específico, estiramientos, acariciar a sus animales. Que sea concreta y caliente: "Lo que tu cuerpo está pidiendo ahora es X. Así se hace: [instrucción breve]."',
+      pendientes:  'Fer acaba de elegir CERRAR PENDIENTES para esta tarde. Lee sus pendientes actuales y elige los 2-3 con mayor impacto o que lleven más días sin atención. Para cada uno: nombre + por qué hoy + tiempo estimado. Empieza con el más pequeño para ganar impulso. Formato limpio, accionable. Si alguno tiene mucha fricción, ofrece romperlo en un paso más pequeño.',
+    };
+    const instruccion = instrucciones[modo];
+    if (instruccion) {
+      await bot.sendMessage(chatId, '⏳ Un momento...', { parse_mode: 'Markdown' });
+      const respuesta = await generarMensajeAutomatico(instruccion);
+      if (respuesta) await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+    }
+
+  // RECOVERY WINDOW (4pm buttons)
+  } else if (data === 'recov_ya_entrene') {
+    await bot.sendMessage(chatId, '💪 ¿Qué tipo de entrenamiento?', {
+      reply_markup: { inline_keyboard: [
+        [{ text: '🏋️ Intenso (gym/natación/tennis)', callback_data: 'recov_intenso' }],
+        [{ text: '🧘 Suave (pilates/yoga/caminata)', callback_data: 'recov_suave' }],
+        [{ text: '🐴 Equitación', callback_data: 'recov_equitacion' }],
+      ]},
+    });
+  } else if (data.startsWith('recov_')) {
+    const modo = data.replace('recov_', '');
+    const instrucciones = {
+      intenso:    'Fer acaba de confirmar que hizo un entrenamiento INTENSO hoy (gym, natación, tennis o similar). Con base en su Body Battery actual, HRV, estrés y fase del ciclo, genera su Recovery Window: (1) Una línea de diagnóstico honesto de cómo está su cuerpo ahorita. (2) Lo más importante ahora: proteína en los próximos 30-60 min, hidratación, o antiinflamatorio natural según sus datos Garmin y ciclo. (3) UNA acción concreta para las próximas 2 horas que proteja su recuperación muscular y sistema nervioso. Breve, directo.',
+      suave:      'Fer acaba de confirmar que hizo ejercicio SUAVE hoy (pilates, yoga, caminata o similar). Con base en su BB, sueño y fase del ciclo, genera su Recovery Window: (1) Una línea de cómo está su sistema — el ejercicio suave suele sumar energía, no restarla. (2) Si su BB es alto: aprovecha la activación para algo creativo o productivo. Si BB bajo: protección del SNS igualmente. (3) UNA acción concreta recomendada. Sin urgencia por recuperación física pesada.',
+      equitacion: 'Fer acaba de confirmar que fue a EQUITACIÓN hoy. Es ejercicio físico + mental + emocional intenso. Revisa su BB y ciclo. Genera su Recovery Window: (1) Cómo está su sistema después de montar — fatiga muscular de core y piernas + concentración mental alta. (2) Lo más importante: comer algo completo, hidratarse bien, descomprimir la mente antes de pasar a otras actividades. (3) UNA acción de recuperación específica para las próximas 2 horas. Breve.',
+      voy:        'Fer acaba de confirmar que VA A ENTRENAR en un rato. Genera su Pre-Performance Window: (1) Una línea de cómo está su energía ahora (BB, ciclo). (2) Snack e hidratación específicos recomendados ANTES — qué, cuánto y con cuánto tiempo de anticipación según el tipo de entrenamiento que probablemente hará. (3) UNA cosa para activar su sistema sin gastar energía antes de tiempo. Concreta y energizante.',
+      noentrene:  'Fer acaba de confirmar que NO entrenó hoy. Con base en su BB, sueño, estrés y fase del ciclo, genera su Recovery Window: si BB bajo, estrés alto o fase menstrual → protección del sistema nervioso (qué evitar, qué hacer suave). Si BB alto → permiso para aprovechar ese impulso con algo activo suave. UNA acción concreta recomendada para las próximas 2 horas. Sin juicio por no haber entrenado.',
+    };
+    const instruccion = instrucciones[modo];
+    if (instruccion) {
+      await bot.sendMessage(chatId, '⏳ Un momento...', { parse_mode: 'Markdown' });
+      const respuesta = await generarMensajeAutomatico(instruccion);
+      if (respuesta) await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+    }
+
+  // FOTO → GUARDAR EN RECETARIO
+  } else if (data === 'foto_guardar_receta') {
+    const analisis = userState[chatId]?.ultimaFotoAnalisis || '';
+    if (!analisis) { await bot.sendMessage(chatId, 'No encontré el análisis. Manda la foto de nuevo.'); return; }
+    await bot.sendMessage(chatId, '⏳ Guardando en recetario...', { parse_mode: 'Markdown' });
+    const instruccion = `Con base en este análisis de foto de comida, guarda la receta en el recetario usando la herramienta guardar_receta. Extrae nombre, ingredientes, tipo de platillo y macros del análisis. Asigna las etiquetas y fase del ciclo correctas según la taxonomía.\n\nAnálisis:\n${analisis}`;
+    const respuesta = await generarMensajeAutomatico(instruccion);
+    if (respuesta) await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+
+  } else if (data === 'foto_solo_log') {
+    const analisis = userState[chatId]?.ultimaFotoAnalisis || '';
+    await bot.sendMessage(chatId, `✅ Registrado. ${analisis.split('\n')[0]}`);
+
+  // STAPLES → LISTAS DE COMPRAS
+  } else if (data === 'staples_a_super') {
+    const items = await getStaplesWP();
+    if (!items.length) { await bot.sendMessage(chatId, 'No hay staples guardados.'); return; }
+    for (const item of items) {
+      await agregarItemSuperWP(item.text, item.catIndex);
+    }
+    await bot.sendMessage(chatId, `✅ ${items.length} staples agregados a tus listas.\n\nBorra los que ya tengas en casa y los que queden son tu lista de compras.`);
+
+  // MENÚ SEMANAL — número de comidas elegido
+  } else if (data.startsWith('menu_n_')) {
+    const n = parseInt(data.replace('menu_n_', ''));
+    await bot.sendMessage(chatId, `⏳ Armando el menú para ${n} comidas...`, { parse_mode: 'Markdown' });
+    const instruccion = `Fer quiere planear ${n} comidas para esta semana (desayunos y cenas combinados).
+
+Usa la herramienta ver_recetario para buscar recetas. Filtra por su fase del ciclo actual. Considera también su estrategia energética de la semana y si tiene días de entrenamiento intenso (necesita más proteína esos días).
+
+Reglas para armar el menú:
+- Reparte equitativamente entre desayunos y cenas según el número total
+- No repitas la proteína principal dos días seguidos (ej: no pollo lunes y martes)
+- En días de entrenamiento intenso o post-gym: prioriza recetas con tag alta_proteina o post_gym
+- En fase menstrual o lútea tardía: prioriza antiinflamatoria, hierro, comfort_food
+- En fase folicular u ovulación: prioriza ligera, alta_energia, variedad
+- Incluye opciones rápidas (tag rapida o menos_10_min) para días con más carga
+
+Formato de salida:
+📅 *Menú de la semana*
+Día — Tipo (desayuno/cena): Nombre receta _(tag relevante)_
+
+Al final una línea breve con los ingredientes clave que probablemente hay que comprar. NADA MÁS después de eso.`;
+
+    const menu = await generarMensajeAutomatico(instruccion);
+    if (menu) {
+      if (!userState[chatId]) userState[chatId] = {};
+      userState[chatId].ultimoMenu = menu;
+      await bot.sendMessage(chatId, menu, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: [
+          [{ text: '🛒 Agregar ingredientes al súper', callback_data: 'menu_a_super' }],
+        ]},
+      });
+    }
+
+  // MENÚ → LISTA DEL SÚPER
+  } else if (data === 'menu_a_super') {
+    const menu = userState[chatId]?.ultimoMenu || '';
+    if (!menu) { await bot.sendMessage(chatId, 'No encontré el menú. Genera uno nuevo con /menu'); return; }
+    await bot.sendMessage(chatId, '🛒 Extrayendo ingredientes...', { parse_mode: 'Markdown' });
+    const prompt = `Del siguiente menú semanal, extrae SOLO los ingredientes que hay que comprar. Una línea por ingrediente, sin cantidades, sin bullets, sin categorías. Solo el nombre del ingrediente en minúsculas:\n\n${menu}`;
+    const ingredientesTexto = await llamarClaude(prompt);
+    const items = ingredientesTexto.split('\n').map(i => i.trim()).filter(i => i.length > 2);
+    for (const item of items) {
+      await agregarItemSuperWP(item, 1); // categoría 1 = Supermercado
+    }
+    await bot.sendMessage(chatId, `✅ ${items.length} ingredientes agregados al Supermercado:\n${items.join(', ')}`);
+
+  // COMIDA AMBIGUA — fuera o en casa
+  } else if (data === 'comida_casa') {
+    await bot.answerCallbackQuery(query.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
+    const textoOriginal = (userState[chatId] || {}).textoOriginal || 'qué puedo comer';
+    userState[chatId] = null;
+    await guardarMensajeConversacion('user', textoOriginal);
+    const extraCtx = `Fernanda está en casa y quiere ideas de comida. PASOS OBLIGATORIOS:
+1. Usa ver_recetario para buscar recetas según su fase del ciclo actual.
+2. Si mencionó ingredientes que tiene (en este mensaje o en el historial reciente), cruza con las recetas para ver cuáles puede hacer ahora mismo.
+3. Primero muestra las recetas que puede hacer con lo que tiene. Luego, para otras opciones interesantes, lista brevemente qué ingredientes le faltan.
+4. Si el recetario está vacío o no hay coincidencias, propón ideas y ofrece guardarlas.`;
+    const { texto: respuesta, acciones } = await llamarClaudeConMemoria(textoOriginal, extraCtx);
+    await guardarMensajeConversacion('assistant', respuesta);
+    let msg = respuesta;
+    if (acciones.length > 0) msg += `\n\n_${acciones.join(' · ')}_`;
+    await bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
+
+  } else if (data === 'comida_fuera') {
+    await bot.answerCallbackQuery(query.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
+    const textoOriginal = (userState[chatId] || {}).textoOriginal || '';
+    userState[chatId] = null;
+    const msgPedir = '📍 Comparte tu ubicación y te busco opciones reales cerca de donde estás!';
+    if (textoOriginal) _pendingTexto.set(chatId, { timer: setTimeout(() => _pendingTexto.delete(chatId), 180000), texto: textoOriginal });
+    await bot.sendMessage(chatId, msgPedir);
+
+  // CHECK-IN 1PM
+  } else if (data === 'checkin_si') {
+    await bot.answerCallbackQuery(query.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
+    const hora = horaLocal();
+    const extraCtx = `Son las ${hora}. Fernanda quiere hacer el check-in de mediodía.
+
+Genera un check-in breve y directo:
+1. ⚡ Estado actual: Body Battery + ciclo en 1 línea.
+2. ☀️ Lo de esta mañana: reconoce lo que sí se hizo (enfoques, tareas). Sin presión.
+3. 🎯 UNA prioridad para el resto del día — la más importante.
+4. Termina con: "¿Cómo quieres invertir la energía que te queda hoy?"
+
+Máximo 8 líneas. Tono directo y cálido.`;
+    const { texto: respuesta } = await llamarClaudeConMemoria('check-in de mediodía', extraCtx);
+    await guardarMensajeConversacion('assistant', respuesta);
+    await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+
+  } else if (data === 'checkin_noche') {
+    await bot.answerCallbackQuery(query.id);
+    await bot.editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: chatId, message_id: query.message.message_id }).catch(() => {});
+    await bot.sendMessage(chatId, '🌙 Perfecto, nos vemos en la noche. Cuando quieras cerrar el día dime _"buenas noches"_.', { parse_mode: 'Markdown' });
+
   // RECETA → SÚPER
   } else if (data === 'receta_a_super') {
     const receta = estado?.ultimaReceta || '';
@@ -1957,6 +3082,87 @@ async function procesarTexto(chatId, texto) {
   const estado = userState[chatId] || {};
 
   try {
+    // BUENOS DÍAS — activa el día y genera brief fresco (solo si el día no fue activado aún)
+    const SALUDO_REGEX = /^(buenos?\s+d[ií]as?|buen\s+d[ií]a|buenas?\s+tardes?|hola[,!.\s]|hello[,!.\s]?$|hey[,!.\s]?$|ey[,!.\s]?$|yoo+[,!.\s]?$|oli+[,!.\s]?$|wenas?[,!.\s]?$|qu[eé]\s+(ond[ao]|show|pe[xk]|m[aá]s|tal)[,!.\s]?$|ya\s+(me\s+)?(levant[eé]|despert[eé])|aqu[ií]\s+(ando|estoy)|arrancamos|a\s+darle|v[aá]monos|presente[,!.\s]?$|list[ao][,!.\s]?$)/i;
+    if (SALUDO_REGEX.test(texto.trim()) && !diaActivadoHoy(chatId)) {
+      activarDia(chatId);
+      const hora = horaLocal();
+      await guardarMensajeConversacion('user', texto);
+      const extraCtx = `Son las ${hora}. Fernanda activó el día con: "${texto}".
+
+Genera el brief del día en DOS BLOQUES separados exactamente por la línea: ---SPLIT---
+
+REGLAS GENERALES:
+- Adapta TODO a la hora real (${hora}). No asumas que es de mañana si ya es mediodía o tarde.
+- Si el saludo tiene contexto ("ando cansadísima", "tengo mucho trabajo", "estoy de paseo"), adápta el tono y el plan.
+
+BLOQUE 1 — Estado y energía:
+Encabezado con el día, fecha y hora real.
+🔋 Sueño y energía: Body Battery, horas dormidas, HRV — interpretación honesta.
+🌿 Ciclo: fase + qué habilidades tiene hoy amplificadas. 2-3 líneas con profundidad.
+✨ Luna: máximo 2 líneas — fase + UNA idea concreta para hoy.
+☕ Bebida recomendada: explica por qué según ciclo + Garmin + hora.
+
+---SPLIT---
+
+BLOQUE 2 — Movimiento y plan:
+🏊 MOVIMIENTO — LEE ÚNICAMENTE el widget del contexto (sección MOVIMIENTO Y HÁBITOS DE HOY):
+  - Si hay workout planificado: escribe sobre ESE específicamente con detalle real.
+  - Si NO hay ningún workout: escribe "No tienes entrenamiento planificado hoy. ¿Lo agregamos?" y usa editar_widget si Fernanda te dice qué va a hacer.
+  - NUNCA menciones workouts de días anteriores ni asumas ninguna rutina por default.
+
+🥚 Comida: adáptala a la hora real (${hora}). Si ya es tarde, no sugieras desayuno.
+
+🎯 AGENDA Y PENDIENTES — REGLAS ESTRICTAS:
+  - SOLO eventos y pendientes de HOY que aún no han pasado (después de las ${hora}).
+  - IGNORA cualquier recordatorio de estudios médicos, citas o pendientes que ya mencionaste como hechos en conversaciones anteriores.
+  - Si algo ya fue confirmado como hecho por Fernanda (aunque esté en datos guardados), no lo repitas.
+  - Los 2-3 más urgentes de HOY únicamente.
+
+⚠️ Solo menciona algo urgente si es específicamente hoy y aún no ha ocurrido.
+Cierra con UNA línea específica al momento real. Sin genéricos.`;
+
+      const { texto: respuesta } = await llamarClaudeConMemoria(texto, extraCtx);
+      await guardarMensajeConversacion('assistant', respuesta);
+      const partes = respuesta.split('---SPLIT---');
+      if (partes.length >= 2) {
+        await bot.sendMessage(chatId, partes[0].trim(), { parse_mode: 'Markdown' });
+        await bot.sendMessage(chatId, partes[1].trim(), { parse_mode: 'Markdown' });
+      } else {
+        await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+      }
+      return;
+    }
+
+    // BUENAS NOCHES / CIERRE DEL DÍA
+    if (/^(buenas?\s+noches?|cierre\s+del\s+d[ií]a|cerramos\s+el\s+d[ií]a)/i.test(texto.trim())) {
+      await guardarMensajeConversacion('user', texto);
+      const extraCtx = `Fernanda está cerrando el día con: "${texto}".
+
+Genera el cierre nocturno. ESTRUCTURA EXACTA:
+
+1. 💊 Rutina nocturna:
+Espironolactona · Magnesio · Minoxidil
+
+2. 🌗 Luna — UNA sola idea, máximo 25 palabras.
+
+3. ✨ Una evidencia real — busca en el contexto UNA cosa concreta que hizo hoy. No motivación vacía. Específica.
+
+4. 🌿 Una línea: lo que más le ayuda a su cuerpo ahora es dormir.
+
+5. Cierre FIJO siempre exactamente:
+"Mañana el sistema vuelve a empezar.
+Por hoy... ya hiciste suficiente.
+Buenas noches, Fer. 🤍"
+
+Sin preguntas. Sin abrir ningún loop. El cierre es el cierre.`;
+
+      const { texto: respuesta } = await llamarClaudeConMemoria(texto, extraCtx);
+      await guardarMensajeConversacion('assistant', respuesta);
+      await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
+      return;
+    }
+
     // JOURNAL
     if (estado.modo === 'journal') {
       const detectados = await detectarYRegistrar(chatId, texto);
@@ -2027,6 +3233,29 @@ async function procesarTexto(chatId, texto) {
     }
 
     // TAREA
+    if (estado.modo === 'loc_nombre_lugar') {
+      userState[chatId] = null;
+      const nombre = texto.trim();
+      await guardarUbicacionNombrada(nombre, estado.lat, estado.lng, estado.lugar);
+      await bot.sendMessage(chatId, `✅ Guardado: *${nombre}* → ${estado.lugar.split(',')[0]} 📍\n\nPuedo usarlo como origen en tus rutas. Solo di "desde ${nombre}".`, { parse_mode: 'Markdown' });
+      return;
+    }
+
+    if (estado.modo === 'loc_comercio_query') {
+      userState[chatId] = null;
+      await bot.sendMessage(chatId, `🔍 Buscando "${texto}" cerca de ti...`);
+      const comercios = await buscarComercios(estado.lat, estado.lng, texto, 5000);
+      await enviarResultadosLugares(chatId, estado.lat, estado.lng, estado.lugar, comercios, texto);
+      return;
+    }
+
+    if (estado.modo === 'loc_ruta_query') {
+      userState[chatId] = null;
+      _pendingLocation.delete(chatId);
+      await procesarRuta(chatId, estado.lat, estado.lng, estado.lugar, texto);
+      return;
+    }
+
     if (estado.modo === 'tarea_escribiendo') {
       await agregarTareaWP(texto);
       await bot.sendMessage(chatId, `✅ Tarea agregada a tu semana:\n"${texto}"`);
@@ -2056,9 +3285,334 @@ async function procesarTexto(chatId, texto) {
   }
 }
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function buscarLugaresCercanos(lat, lng, tipo = 'restaurant', radioM = 3000) {
+  const apiKey = process.env.GOOGLE_MAPS_KEY;
+  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radioM}&type=${tipo}&rankby=prominence&key=${apiKey}&language=es`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+    console.log('[places] status:', data.status);
+  }
+
+  const mapear = p => {
+    const distKm = haversineKm(lat, lng, p.geometry.location.lat, p.geometry.location.lng);
+    const distM = Math.round(distKm * 1000);
+    return {
+      nombre: p.name,
+      rating: p.rating ?? null,
+      reviews: p.user_ratings_total ?? 0,
+      precioNum: p.price_level ?? null,
+      precio: p.price_level ? '$'.repeat(p.price_level) : null,
+      abierto: p.opening_hours?.open_now ?? null,
+      distancia: distM < 1000 ? `${distM}m` : `${(distKm).toFixed(1)}km`,
+      caminando: `~${Math.round(distKm * 12)} min`,
+      coche: `~${Math.max(1, Math.round(distKm * 2.5))} min`,
+    };
+  };
+
+  const todos = (data.results || []).map(mapear);
+  const usados = new Set();
+
+  const tomar = (filtro, max) => {
+    const candidatos = todos
+      .filter(r => !usados.has(r.nombre) && filtro(r))
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
+    const elegidos = candidatos.slice(0, max);
+    elegidos.forEach(r => usados.add(r.nombre));
+    return elegidos;
+  };
+
+  // Tier A: 4.5+ estrellas y 50+ reseñas → hasta 4
+  const tierA = tomar(r => (r.rating ?? 0) >= 4.5 && r.reviews >= 50, 4);
+  // Tier B: 4.0+ estrellas y 100+ reseñas → hasta 3
+  const tierB = tomar(r => (r.rating ?? 0) >= 4.0 && r.reviews >= 100, 3);
+  // Tier C: 4.5+ estrellas y 10+ reseñas (hidden gems) → hasta 1
+  const tierC = tomar(r => (r.rating ?? 0) >= 4.5 && r.reviews >= 10, 1);
+
+  const seleccion = [...tierA, ...tierB, ...tierC];
+
+  // Fallback: si hay menos de 3 resultados, completar con los de mejor rating
+  if (seleccion.length < 3) {
+    const extras = tomar(r => (r.rating ?? 0) >= 3.5, 8 - seleccion.length);
+    return [...seleccion, ...extras];
+  }
+
+  return seleccion;
+}
+
+// ── LOCATION STATE ─────────────────────────────────────────────────────────
+const _pendingTexto = new Map();    // chatId -> { timer, texto }
+const _pendingLocation = new Map(); // chatId -> { lat, lng, lugar, timestamp }
+
+// ── HELPERS DE BÚSQUEDA ─────────────────────────────────────────────────────
+
+async function buscarComercios(lat, lng, busqueda, radioM = 5000) {
+  const apiKey = process.env.GOOGLE_MAPS_KEY;
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(busqueda)}&location=${lat},${lng}&radius=${radioM}&key=${apiKey}&language=es`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const mapear = p => {
+    const distKm = haversineKm(lat, lng, p.geometry.location.lat, p.geometry.location.lng);
+    const distM = Math.round(distKm * 1000);
+    return {
+      nombre: p.name,
+      direccion: (p.formatted_address || '').split(',')[0],
+      rating: p.rating ?? null,
+      reviews: p.user_ratings_total ?? 0,
+      lat: p.geometry.location.lat,
+      lng: p.geometry.location.lng,
+      abierto: p.opening_hours?.open_now ?? null,
+      distancia: distM < 1000 ? `${distM}m` : `${(distKm).toFixed(1)}km`,
+      caminando: `~${Math.round(distKm * 12)} min`,
+      coche: `~${Math.max(1, Math.round(distKm * 2.5))} min`,
+    };
+  };
+  const todos = (data.results || []).map(mapear).sort((a, b) => {
+    const ra = (a.rating ?? 3.5); const rb = (b.rating ?? 3.5);
+    return (rb * Math.log(b.reviews + 1)) - (ra * Math.log(a.reviews + 1));
+  });
+  // Filtrar con al menos 4.0 si hay suficientes, sino todos
+  const buenos = todos.filter(r => (r.rating ?? 0) >= 4.0);
+  return (buenos.length >= 3 ? buenos : todos).slice(0, 8);
+}
+
+async function buscarLugarPorNombre(nombre, latBase, lngBase) {
+  const apiKey = process.env.GOOGLE_MAPS_KEY;
+  const query = `${nombre} cerca de Mérida Yucatán`;
+  const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${latBase},${lngBase}&radius=8000&key=${apiKey}&language=es`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status === 'OK' && data.results.length > 0) {
+    const p = data.results[0];
+    return { nombre: p.name, lat: p.geometry.location.lat, lng: p.geometry.location.lng, direccion: (p.formatted_address || '').split(',').slice(0, 2).join(',') };
+  }
+  return null;
+}
+
+function optimizarRuta(origen, destinos) {
+  const restantes = [...destinos];
+  const ruta = [];
+  let actual = origen;
+  while (restantes.length > 0) {
+    let minD = Infinity, minI = 0;
+    restantes.forEach((p, i) => { const d = haversineKm(actual.lat, actual.lng, p.lat, p.lng); if (d < minD) { minD = d; minI = i; } });
+    ruta.push(restantes[minI]);
+    actual = restantes[minI];
+    restantes.splice(minI, 1);
+  }
+  return ruta;
+}
+
+async function enviarResultadosLugares(chatId, lat, lng, lugar, lugares, tipoMsg) {
+  const MAL_INFO_REGEX = /no tengo acceso a (internet|mapas|el mapa)|no puedo buscar restaurantes|no puedo ver.*mapa|los inventé|inventé esos restaurantes/i;
+  const [ctxDia, historial, datos] = await Promise.all([
+    getContextoDia().catch(() => ''),
+    getHistorialReciente(10).catch(() => []),
+    getDatosImportantes().catch(() => []),
+  ]);
+  const userMsg = `[ubicación: ${lugar}] [busca: ${tipoMsg}]`;
+  let systemExtra = '';
+  if (datos.length > 0) systemExtra += '\n\n## Lo que recuerdas de Fernanda:\n' + datos.map(d => `- ${d.texto}`).join('\n');
+  if (lugares.length > 0) {
+    const lista = lugares.map((r, i) => {
+      const partes = [`${i + 1}. ${r.nombre}`];
+      if (r.rating) partes.push(`⭐${r.rating}${r.reviews ? ` (${r.reviews})` : ''}`);
+      if (r.precio) partes.push(r.precio);
+      partes.push(r.distancia);
+      partes.push(`🚶${r.caminando}`);
+      partes.push(`🚗${r.coche}`);
+      if (r.abierto === false) partes.push('⚠️ cerrado');
+      return partes.join(' | ');
+    }).join('\n');
+    const esRestaurante = /restaurante|comer|comida/i.test(tipoMsg);
+    systemExtra += `\n\n## ${tipoMsg} cercanos (hasta 5km):\n${lista}\n\n`;
+    if (esRestaurante) {
+      systemExtra += `Presenta resultados en 3 secciones: ⭐ DESTACADOS (4.5+, 50+ reseñas) · ✅ SÓLIDOS (4.0+, 100+ reseñas) · 💎 GEM (4.5+, pocas reseñas). Por cada lugar: nombre, rating, distancia, tiempo caminando/coche, qué pedir según macros. Al inicio: calorías objetivo y cuántas quedan.`;
+    } else {
+      systemExtra += `Presenta los resultados con nombre, rating, distancia, tiempo caminando/coche. Resalta si están abiertos. Máximo 2 líneas por lugar.`;
+    }
+  } else {
+    systemExtra += `\nNo encontré ${tipoMsg} cercanos. Sugiere alternativas.`;
+  }
+  const messages = [
+    ...historial.filter(m => !(m.role === 'assistant' && MAL_INFO_REGEX.test(m.texto))).map(m => ({ role: m.role, content: m.texto })),
+    { role: 'user', content: userMsg },
+  ];
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6', max_tokens: 1500,
+    system: SYSTEM_PROMPT + (ctxDia ? `\n\n## Estado actual de Fer:${ctxDia}` : '') + systemExtra,
+    messages,
+  });
+  const respuesta = response.content[0]?.text || '';
+  await guardarMensajeConversacion('user', userMsg);
+  await guardarMensajeConversacion('assistant', respuesta);
+  try { await bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' }); }
+  catch { await bot.sendMessage(chatId, respuesta); }
+}
+
+async function procesarRuta(chatId, lat, lng, lugar, textoRuta) {
+  await bot.sendMessage(chatId, '🗺️ Buscando tus paradas...');
+  const parseRes = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6', max_tokens: 150,
+    system: 'Extrae los nombres de los lugares a visitar del texto. Devuelve SOLO un JSON array de strings. Ejemplo: ["Banamex","zapatero","Walmart"]. Si no hay lugares, devuelve [].',
+    messages: [{ role: 'user', content: textoRuta }],
+  });
+  let nombres = [];
+  try { const p = JSON.parse(parseRes.content[0]?.text || '[]'); if (Array.isArray(p)) nombres = p; } catch { nombres = textoRuta.split(/[,y]\s+/).map(s => s.trim()).filter(s => s.length > 2); }
+  if (nombres.length === 0) { await bot.sendMessage(chatId, '🤔 No identifiqué lugares. Escríbelos: "Banamex, zapatero, Walmart"'); return; }
+
+  const resultados = await Promise.all(nombres.map(n => buscarLugarPorNombre(n, lat, lng).catch(() => null)));
+  const encontrados = resultados.filter(Boolean);
+  const noEncontrados = nombres.filter((_, i) => !resultados[i]);
+
+  if (encontrados.length === 0) { await bot.sendMessage(chatId, '😕 No encontré ningún lugar. Intenta con nombres más específicos.'); return; }
+
+  const rutaOptima = optimizarRuta({ lat, lng }, encontrados);
+  const origin = `${lat},${lng}`;
+  const last = rutaOptima[rutaOptima.length - 1];
+  const intermedias = rutaOptima.slice(0, -1).map(p => `${p.lat},${p.lng}`).join('|');
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${last.lat},${last.lng}${intermedias ? `&waypoints=${encodeURIComponent(intermedias)}` : ''}&travelmode=driving`;
+
+  let totalKm = 0; let prev = { lat, lng };
+  for (const p of rutaOptima) { totalKm += haversineKm(prev.lat, prev.lng, p.lat, p.lng); prev = p; }
+
+  let msg = `🗺️ *Ruta optimizada desde ${lugar.split(',')[0]}*\n\n`;
+  rutaOptima.forEach((p, i) => {
+    const desde = i === 0 ? { lat, lng } : rutaOptima[i - 1];
+    const d = Math.round(haversineKm(desde.lat, desde.lng, p.lat, p.lng) * 1000);
+    msg += `${i + 1}. *${p.nombre}*\n   📍 ${p.direccion} · ${d < 1000 ? `${d}m` : `${(d/1000).toFixed(1)}km`} del anterior\n\n`;
+  });
+  if (noEncontrados.length > 0) msg += `⚠️ No encontré: ${noEncontrados.join(', ')}\n\n`;
+  msg += `📏 Total: ~${totalKm.toFixed(1)} km · ⏱️ ~${Math.round(totalKm * 2.5)} min en coche\n\n`;
+  msg += `👇 [Abrir en Google Maps](${mapsUrl})`;
+
+  await guardarMensajeConversacion('user', `[ruta: ${textoRuta}]`);
+  await guardarMensajeConversacion('assistant', msg);
+  try { await bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' }); }
+  catch { await bot.sendMessage(chatId, msg.replace(/\*/g, '')); }
+}
+
+// ── MESSAGE HANDLER ─────────────────────────────────────────────────────────
+
 bot.on('message', async (msg) => {
-  if (!msg.text || msg.text.startsWith('/')) return;
-  await procesarTexto(msg.chat.id, msg.text);
+  try {
+    const chatId = msg.chat.id;
+
+    // Ubicación
+    if (msg.location) {
+      const { latitude, longitude } = msg.location;
+      const pending = _pendingTexto.get(chatId);
+      let textoAnterior = '';
+      if (pending) { clearTimeout(pending.timer); _pendingTexto.delete(chatId); textoAnterior = pending.texto; }
+
+      try {
+        const apiKey = process.env.GOOGLE_MAPS_KEY;
+        const geocodeRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=es`).then(r => r.json());
+        const lugar = geocodeRes.results?.[0]?.formatted_address || `${latitude}, ${longitude}`;
+
+        // Detectar intención desde texto previo
+        const esCasa = /esta es mi casa|es mi casa|mi domicilio|mi dirección|aquí vivo|aquí es mi casa|guardar (ubicacion|este lugar|lugar)|este es .*(casa|trabajo|oficina|gym)/i.test(textoAnterior);
+        const esRuta = /ruta|paradas|tengo que ir a|varios lugares|puntos|stops/i.test(textoAnterior);
+        const esComercio = textoAnterior && !/restaurante|comer|comida|cenar|almorzar|desayunar/i.test(textoAnterior);
+
+        if (esCasa) {
+          userState[chatId] = { modo: 'loc_nombre_lugar', lat: latitude, lng: longitude, lugar };
+          await guardarMensajeConversacion('user', `[ubicación a guardar: ${lugar}]`);
+          await bot.sendMessage(chatId, `💾 ¿Cómo se llama este lugar?\n\n_Ej: casa, oficina, casa mamá, gym..._`, { parse_mode: 'Markdown' });
+          return;
+        }
+
+        if (esRuta) {
+          await procesarRuta(chatId, latitude, longitude, lugar, textoAnterior);
+          return;
+        }
+
+        if (esComercio && textoAnterior) {
+          // Búsqueda de comercio con texto previo como query
+          await bot.sendMessage(chatId, `🔍 Buscando "${textoAnterior}" cerca de ti...`);
+          const comercios = await buscarComercios(latitude, longitude, textoAnterior, 5000);
+          await enviarResultadosLugares(chatId, latitude, longitude, lugar, comercios, textoAnterior);
+          return;
+        }
+
+        if (textoAnterior) {
+          // Texto previo sobre comida → búsqueda de restaurantes directa
+          const lugares = await buscarLugaresCercanos(latitude, longitude, 'restaurant', 5000);
+          await enviarResultadosLugares(chatId, latitude, longitude, lugar, lugares, 'restaurantes');
+          return;
+        }
+
+        // Sin texto previo → mostrar menú
+        _pendingLocation.set(chatId, { lat: latitude, lng: longitude, lugar, timestamp: Date.now() });
+        await bot.sendMessage(chatId, `📍 *${lugar.split(',')[0]}*\n\n¿Qué necesitas?`, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🍽️ Restaurantes', callback_data: 'loc_restaurantes' },
+              { text: '🏪 Otro comercio', callback_data: 'loc_comercio' },
+            ], [
+              { text: '🗺️ Hacer ruta', callback_data: 'loc_ruta' },
+              { text: '💾 Guardar ubicación', callback_data: 'loc_guardar_lugar' },
+            ]],
+          },
+        });
+      } catch (e) {
+        console.error('[location] error:', e.message);
+        await bot.sendMessage(chatId, '📍 Recibí tu ubicación pero no pude procesarla.');
+      }
+      return;
+    }
+
+    if (!msg.text || msg.text.startsWith('/')) return;
+
+    const texto = msg.text;
+    const existing = _pendingTexto.get(chatId);
+    if (existing) clearTimeout(existing.timer);
+
+    // Claramente afuera buscando lugar físico
+    const esLocationIntent = /restaurante|cafeter[ií]a|dónde comer|donde comer|dónde hay.*cerca|donde hay.*cerca|comida cerca|lugar cerca|comer cerca|qué hay cerca|que hay cerca|busca.*(restaur|lugar cerca)|encuéntr.*(lugar|restau)|dónde (ir a comer|quedo|puedo comer afuera)/i.test(texto);
+    const esRutaIntent = /tengo que ir a|hacer.* ruta|armar.* ruta|optimizar.* ruta|mis paradas|varias paradas|varios lugares|pasos.*(ir|visitar)/i.test(texto);
+    // Ambiguo: hambre o antojo genérico — puede ser en casa o afuera
+    const esComidaAmbigu = !esLocationIntent && !esRutaIntent && /tengo hambre|qu[eé] (como|puedo comer|me como|comemos)|se me antoja|antojo|quiero comer algo|qu[eé] (hago|preparo|cocino)/i.test(texto);
+
+    if (esRutaIntent) {
+      const msgPedir = '📍 Comparte tu ubicación y te armo la ruta optimizada con link a Google Maps!';
+      const timer = setTimeout(async () => { _pendingTexto.delete(chatId); await procesarTexto(chatId, texto); }, 180000);
+      _pendingTexto.set(chatId, { timer, texto });
+      await guardarMensajeConversacion('user', texto);
+      await bot.sendMessage(chatId, msgPedir);
+      await guardarMensajeConversacion('assistant', msgPedir);
+    } else if (esLocationIntent) {
+      const msgPedir = '📍 Comparte tu ubicación y te busco opciones reales cerca de donde estás!';
+      const timer = setTimeout(async () => { _pendingTexto.delete(chatId); await procesarTexto(chatId, texto); }, 180000);
+      _pendingTexto.set(chatId, { timer, texto });
+      await guardarMensajeConversacion('user', texto);
+      await bot.sendMessage(chatId, msgPedir);
+      await guardarMensajeConversacion('assistant', msgPedir);
+    } else if (esComidaAmbigu) {
+      userState[chatId] = { modo: 'comida_ambigua', textoOriginal: texto };
+      await guardarMensajeConversacion('user', texto);
+      await bot.sendMessage(chatId, '¿Estás fuera o en casa?', {
+        reply_markup: { inline_keyboard: [[
+          { text: '🏠 En casa', callback_data: 'comida_casa' },
+          { text: '📍 Estoy fuera', callback_data: 'comida_fuera' },
+        ]]},
+      });
+    } else {
+      _pendingTexto.delete(chatId);
+      await procesarTexto(chatId, texto);
+    }
+  } catch (e) {
+    console.error('[message handler] error:', e.message);
+  }
 });
 
 // === NOTAS DE VOZ ===
@@ -2105,19 +3659,90 @@ bot.on('voice', async (msg) => {
   }
 });
 
+
+bot.on('photo', async (msg) => {
+  const chatId = msg.chat.id;
+  try {
+    await bot.sendChatAction(chatId, 'typing');
+
+    // Descarga la foto en mayor resolución
+    const foto = msg.photo[msg.photo.length - 1];
+    const fileLink = await bot.getFileLink(foto.file_id);
+    const imgRes = await fetch(fileLink);
+    const imgBuffer = await imgRes.arrayBuffer();
+    const base64 = Buffer.from(imgBuffer).toString('base64');
+    const caption = msg.caption || '';
+
+    // Inyectar contexto del día (ciclo, Garmin, estrategia)
+    const ctxDia = await getContextoDia().catch(() => '');
+    const systemConCtx = ctxDia
+      ? `${SYSTEM_PROMPT}\n\n## Estado actual de Fer (datos en tiempo real):${ctxDia}`
+      : SYSTEM_PROMPT;
+
+    // Claude analiza la imagen
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: systemConCtx,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: base64 },
+          },
+          {
+            type: 'text',
+            text: `Analiza este plato de comida. ${caption ? `Contexto: "${caption}".` : ''} Ya tienes todos sus datos en el contexto (ciclo, Garmin, estrategia) — NO digas que vas a revisar nada, responde directo.
+
+Responde con este formato (sin tablas markdown, texto simple):
+🍽️ *Nombre del platillo*
+Ingredientes principales: ...
+Proteína ~Xg · Carbos ~Xg · Grasas ~Xg · ~XXX kcal
+_(si las porciones son difíciles de ver, da un rango)_
+✨ Una línea sobre si encaja con su fase y energía de hoy.
+
+Si no puedes identificar claramente el plato o los ingredientes, NO inventes — pregunta una sola cosa: "¿Qué es esto?" o "¿Puedes decirme qué tiene?" Es mejor preguntar que estimar mal.`,
+          },
+        ],
+      }],
+    });
+
+    const analisis = response.content[0]?.text || 'No pude analizar la imagen.';
+
+    if (!userState[chatId]) userState[chatId] = {};
+    userState[chatId].ultimaFotoAnalisis = analisis;
+
+    await bot.sendMessage(chatId, `🍽️ ${analisis}`, {
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [
+        [{ text: '📖 Guardar en recetario', callback_data: 'foto_guardar_receta' }],
+        [{ text: '✅ Solo registrar (sin guardar)', callback_data: 'foto_solo_log' }],
+      ]},
+    });
+
+    // Guardar en historial para que mensajes siguientes tengan contexto
+    await guardarMensajeConversacion('user', `[foto de comida${caption ? ': ' + caption : ''}]`);
+    await guardarMensajeConversacion('assistant', analisis);
+  } catch (e) {
+    console.error('Error analizando foto:', e);
+    await bot.sendMessage(chatId, 'No pude analizar la foto. Intenta de nuevo.');
+  }
+});
+
 // === MENSAJES AUTOMÁTICOS ===
 
 async function generarMensajeAutomatico(instruccion) {
   try {
     const ctx = await getContextoDia();
-    const hoy = new Date();
     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diaHoy = dias[hoy.getDay()];
-    const fecha = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', timeZone: 'America/Merida' }).format(hoy);
+    const fechaMerida = fechaLocalHoy();
+    const diaHoy = dias[new Date(fechaMerida + 'T12:00:00').getDay()];
+    const fecha = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'long', timeZone: 'America/Merida' }).format(new Date());
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 800,
+      max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
@@ -2132,109 +3757,20 @@ async function generarMensajeAutomatico(instruccion) {
 }
 
 if (FERNANDA_CHAT_ID) {
-  // 7:35am — DAILY BRIEF (5 min después del sync de Garmin para tener datos frescos)
-  cron.schedule('35 7 * * *', async () => {
+  // 1:00pm L-V — CHECK-IN (solo si Fernanda activó el día con "buenos días")
+  cron.schedule('0 13 * * 1-5', async () => {
     try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el Daily Brief de las 7:30am. Incluye en este orden: (1) cómo durmió según Garmin, Body Battery, estrés, HRV si hay, (2) fase del ciclo menstrual con interpretación breve, (3) La Luna — menciona la fase lunar del día, su arquetipo femenino, lo que significa energéticamente y el ritual sugerido para hoy, (4) recordatorio de no tomar café en ayunas, (5) movimiento recomendado según ciclo+Garmin, (6) desayuno concreto, (7) enfoques del día y pendientes según energía, (8) motivación adaptada. Si hay creatina en el contexto, recuérdale tomarla con el desayuno. Sé específica, útil, cero genérica — que cada sección se sienta personalizada a su momento real.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 7:35am error:', e); }
+      if (!diaActivadoHoy(FERNANDA_CHAT_ID)) return;
+      await bot.sendMessage(FERNANDA_CHAT_ID, '👋 ¿Hacemos check-in?', {
+        reply_markup: { inline_keyboard: [[
+          { text: '✅ Sí', callback_data: 'checkin_si' },
+          { text: '🌙 En la noche', callback_data: 'checkin_noche' },
+        ]]},
+      });
+    } catch (e) { console.error('Cron check-in 1pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // 11:25am — CAMBIO DE CONTEXTO (lun-vie)
-  cron.schedule('25 11 * * 1-5', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de las 11:25am. Empieza con un resumen breve de su sueño de anoche según Garmin (horas, score, interpretación honesta en 1 línea — Garmin ya tiene datos completos a esta hora). Si durmió mal (menos de 6h, score bajo o Body Battery menor a 50), sugiere una siesta de 15-20 minutos antes de la 1pm como herramienta de recuperación, no como señal de fracaso. Luego ayúdala a cambiar de modo: reconoce que terminó su bloque más valioso, pregunta si quiere seguir en compu o pasar a modo casa 40 min (tender cama, cocina, lavadora, descongelar comida). Recuerda menú del día según su ciclo. Breve y directa.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 11:25am error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // 2:00pm — SEGUNDA MITAD
-  cron.schedule('0 14 * * *', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de las 2pm. Ayúdala a decidir cómo usar el resto del día según Garmin y ciclo. Muestra qué pendientes siguen abiertos si hay. Ofrécele modos: seguir trabajando, resolver casa, moverse/salir, o descansar sin culpa. Si es martes o jueves, recuerda equitación a las 4:50pm. Sé breve, que tome la decisión en 10 segundos.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 2pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // 4:00pm — CORTISOL CHECK
-  cron.schedule('0 16 * * *', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el Cortisol Check de las 4pm. Pregunta cómo va su cuerpo (energía y estrés en escala simple). Compara con datos de Garmin si hay. Recomienda UNA acción pequeña de regulación: agua, jardín, caminar 5 min, respirar, snack proteico, acariciar a los perros, cerrar pestañas. Si es martes o jueves recuerda equitación a las 4:50pm. Súper breve.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 4pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // 6:00pm — GASTOS Y PENDIENTES PEQUEÑOS
-  cron.schedule('0 18 * * *', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de las 6pm. Pregunta si tuvo algún gasto hoy (formato fácil: "Gasté $X en Y"). Pregunta si hay UN pendiente de menos de 10 minutos que valga resolverlo antes de la noche. Si no, cerramos. No todo tiene que quedar perfecto hoy. Breve y sin presión.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 6pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // 8:30pm — PREPARAR EL MAÑANA
-  cron.schedule('30 20 * * *', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de las 8:30pm para bajar la carga mental nocturna. Pregunta: ¿perros ya cenaron?, ¿Benito tiene comida?, ¿algo que descongelar para mañana?, ¿ropa del entrenamiento lista? Revisa qué tiene temprano mañana. Sugiere cena ligera adaptada al ciclo y metas. Si mañana es lunes recuerda violín a las 7pm. Si mañana hay gym/natación/equitación, recuerda preparar la ropa/equipo. Sé cálida y práctica.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 8:30pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // 9:30pm — MEDICAMENTOS Y CIERRE
-  cron.schedule('30 21 * * *', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de cierre de las 9:30pm. Incluye: (1) recordatorio de espironolactona, magnesio y minoxidil, (2) La Luna — menciona brevemente la fase lunar de hoy y el ritual sugerido para cerrar el día con esa energía, (3) pregunta si faltó registrar algún gasto, (4) invítala a soltar el teléfono. Cálido, breve, que sienta que el día puede cerrarse con paz.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron 9:30pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // Domingo 7:00pm — PLANEACIÓN SEMANAL
-  cron.schedule('0 19 * * 0', async () => {
-    try {
-      const msg = await generarMensajeAutomatico(
-        'Genera el mensaje de planeación semanal del domingo 7pm. Enfócate en la PRÓXIMA semana: qué fase del ciclo le toca, cómo organizar movimiento/trabajo/comida/descanso en consecuencia. Pregunta si pidió el súper y revisa que tenga lo básico (huevos, yogurt, proteína, fruta, verduras). Pregunta por Atlas, perros, ropa de entrenamiento. Pregunta cuál es UNA cosa que haría que la semana se sienta más tranquila. Sé práctica y energizante, no intensa.'
-      );
-      if (msg) await bot.sendMessage(FERNANDA_CHAT_ID, msg, { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron domingo error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // MEDICINA BENITO — Clozepaxel 8am (July 2-4)
-  cron.schedule('0 8 * * *', async () => {
-    try {
-      const hoy = fechaLocalHoy();
-      if (['2026-07-02','2026-07-03','2026-07-04'].includes(hoy))
-        await bot.sendMessage(FERNANDA_CHAT_ID,
-          '🐱 Medicina de *Benito* (mañana):\n• Clozepaxel 100mg — ½ tableta',
-          { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron Benito 8am error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // MEDICINA BENITO — Clemastine 6pm (July 2-6)
-  cron.schedule('0 18 * * *', async () => {
-    try {
-      const hoy = fechaLocalHoy();
-      if (['2026-07-02','2026-07-03','2026-07-04','2026-07-05','2026-07-06'].includes(hoy))
-        await bot.sendMessage(FERNANDA_CHAT_ID,
-          '🐱 Medicina de *Benito* (tarde):\n• Clemastine — ½ tableta',
-          { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron Benito 6pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  // RESUMEN RECETARIO — 8:00pm todos los días (si hubo nuevas recetas hoy)
+  // 8:00pm — RECETARIO (solo si hubo recetas nuevas hoy)
   cron.schedule('0 20 * * *', async () => {
     try {
       const hoy = fechaLocalHoy();
@@ -2262,29 +3798,19 @@ if (FERNANDA_CHAT_ID) {
     } catch (e) { console.error('Cron recetario 8pm error:', e); }
   }, { timezone: 'America/Merida' });
 
-  // MEDICINA BENITO — Clozepaxel 8pm (July 2-4)
-  cron.schedule('0 20 * * *', async () => {
-    try {
-      const hoy = fechaLocalHoy();
-      if (['2026-07-02','2026-07-03','2026-07-04'].includes(hoy))
-        await bot.sendMessage(FERNANDA_CHAT_ID,
-          '🐱 Medicina de *Benito* (noche):\n• Clozepaxel 100mg — ½ tableta',
-          { parse_mode: 'Markdown' });
-    } catch (e) { console.error('Cron Benito 8pm error:', e); }
-  }, { timezone: 'America/Merida' });
-
-  console.log('✓ Mensajes automáticos activados para Chat ID:', FERNANDA_CHAT_ID);
+  console.log('✓ Crons activos: check-in 1pm (L-V) + recetario 8pm');
 } else {
   console.log('⚠️ FERNANDA_CHAT_ID no configurado');
 }
 
 console.log('🤖 Bot Semana Perfecta v2 iniciado — conectado a Weekly Planner');
-bot.on('polling_error', (error) => console.error('Polling error:', error.code));
+// Webhook mode — no polling
 
 // === WEBHOOK HTTP SERVER (para Zapier / integraciones externas) ===
 
 const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || '';
 const PORT = process.env.PORT || 3000;
+const _seenUpdates = new Set(); // deduplicar updates de Telegram
 
 const server = http.createServer(async (req, res) => {
   if (req.method !== 'POST') {
@@ -2303,6 +3829,23 @@ const server = http.createServer(async (req, res) => {
   req.on('end', async () => {
     try {
       const payload = JSON.parse(body);
+
+      // POST /webhook/telegram — actualizaciones de Telegram
+      if (url.pathname === '/webhook/telegram') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+        const updateId = payload?.update_id;
+        if (updateId && _seenUpdates.has(updateId)) {
+          console.log(`[webhook] update_id ${updateId} duplicado, ignorado`);
+          return;
+        }
+        if (updateId) {
+          _seenUpdates.add(updateId);
+          if (_seenUpdates.size > 200) _seenUpdates.delete(_seenUpdates.values().next().value);
+        }
+        try { bot.processUpdate(payload); } catch (e) { console.error('[TG webhook] error:', e.message); }
+        return;
+      }
 
       // POST /webhook/pinterest — nueva receta desde Zapier
       if (url.pathname === '/webhook/pinterest') {
@@ -2337,6 +3880,18 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🌐 Webhook server escuchando en puerto ${PORT}`);
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (domain) {
+    const webhookUrl = `https://${domain}/webhook/telegram${WEBHOOK_TOKEN ? '?token=' + WEBHOOK_TOKEN : ''}`;
+    try {
+      await bot.setWebHook(webhookUrl);
+      console.log(`✅ Telegram webhook registrado: ${webhookUrl}`);
+    } catch (e) {
+      console.error('❌ Error registrando webhook:', e.message);
+    }
+  } else {
+    console.warn('⚠️  RAILWAY_PUBLIC_DOMAIN no definido — webhook no registrado');
+  }
 });
