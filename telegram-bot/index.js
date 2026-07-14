@@ -277,8 +277,8 @@ async function registrarComida(descripcion, calorias, proteina = 0, carbos = 0, 
     grasas: acc.grasas + e.grasas,
   }), { calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
   await ref.set({ fecha, entries, total });
-  // Mirror totals to WP Firebase so the dashboard can read them
-  wpUser().doc('nutricion_hoy').set({ fecha, total, entradas: entries.length }).catch(e => console.error('nutricion wpUser:', e));
+  // Mirror totals to WP Firebase so the dashboard can read them (merge to preserve objetivo)
+  wpUser().doc('nutricion_hoy').set({ fecha, total, entradas: entries.length }, { merge: true }).catch(e => console.error('nutricion wpUser:', e));
   return { entries, total };
 }
 
@@ -1124,6 +1124,12 @@ async function getContextoDia() {
 
       const cals = calcularCaloriasObjetivo(ultimoInbody, garmin, cicloInfo);
       if (cals) {
+        // Persist objetivo to WP Firebase for dashboard (merge to preserve consumed totals)
+        wpUser().doc('nutricion_hoy').set({
+          fecha: fechaLocalHoy(),
+          objetivo: cals.objetivo,
+          macros: { proteina: cals.proteina, carbos: cals.carbos, grasas: cals.grasas },
+        }, { merge: true }).catch(e => console.error('nutricion objetivo wpUser:', e));
         ctx += `\n\nOBJETIVO CALÓRICO HOY: ${cals.objetivo} kcal`;
         ctx += `\n• TDEE estimado: ${cals.tdee} kcal · Déficit aplicado: ${cals.deficit} kcal`;
         if (cals.cicloAjuste !== 0) ctx += ` · Ajuste de ciclo: ${cals.cicloAjuste > 0 ? '+' : ''}${cals.cicloAjuste} kcal (${cicloInfo.fase})`;
