@@ -277,8 +277,8 @@ async function registrarComida(descripcion, calorias, proteina = 0, carbos = 0, 
     grasas: acc.grasas + e.grasas,
   }), { calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
   await ref.set({ fecha, entries, total });
-  // Mirror totals to WP Firebase for the dashboard (simple, no extra reads)
-  await wpUser().doc('nutricion_hoy').set({ fecha, total, entradas: entries.length }, { merge: true });
+  // Mirror to weekData doc (same doc as gastos — already works, already subscribed by WP app)
+  await wpUser().doc(getWeekId()).set({ nutricion: { fecha, total } }, { merge: true });
   return { entries, total };
 }
 
