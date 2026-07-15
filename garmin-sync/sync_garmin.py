@@ -54,49 +54,71 @@ def get_garmin():
 def sincronizar():
     try:
         fecha = hoy_local()
+        hora = datetime.now(ZONA).strftime("%H:%M")
         client = get_garmin()
         datos = {}
 
+        # HRV
         try:
             hrv = client.get_hrv_data(fecha)
             datos["hrv"] = hrv.get("hrvSummary", {}).get("lastNightAvg") if hrv else None
-        except Exception:
+        except Exception as e:
             datos["hrv"] = None
+            print(f"[{hora}] HRV error: {e}", flush=True)
 
+        # Body battery — endpoint dedicado, más confiable que get_stats
+        try:
+            bb_data = client.get_body_battery(fecha, fecha)
+            if bb_data and isinstance(bb_data, list) and len(bb_data) > 0:
+                valores = bb_data[0].get("bodyBatteryValuesArray") or []
+                if valores:
+                    datos["bodyBattery"] = valores[-1][1]  # último valor del día
+                else:
+                    datos["bodyBattery"] = None
+            else:
+                datos["bodyBattery"] = None
+        except Exception as e:
+            datos["bodyBattery"] = None
+            print(f"[{hora}] Body battery error: {e}", flush=True)
+
+        # Stress, restingHR, SpO2 — vía get_stats (puede fallar con 503)
         try:
             stats = client.get_stats(fecha)
-            datos["bodyBattery"] = stats.get("bodyBatteryMostRecentValue")
             datos["stress"] = stats.get("averageStressLevel")
             datos["restingHR"] = stats.get("restingHeartRate")
             datos["spo2"] = stats.get("averageSpo2")
-        except Exception:
-            pass
+            # body battery de respaldo si el método dedicado falló
+            if datos.get("bodyBattery") is None:
+                datos["bodyBattery"] = stats.get("bodyBatteryMostRecentValue")
+        except Exception as e:
+            print(f"[{hora}] Stats error (503 frecuente): {e}", flush=True)
 
+        # Sueño
         try:
             sueno = client.get_sleep_data(fecha)
             resumen = sueno.get("dailySleepDTO", {}) if sueno else {}
             segundos = resumen.get("sleepTimeSeconds")
             datos["suenoHoras"] = round(segundos / 3600, 1) if segundos else None
             datos["suenoScore"] = (resumen.get("sleepScores") or {}).get("overall", {}).get("value")
-        except Exception:
-            pass
+        except Exception as e:
+            datos["suenoHoras"] = None
+            datos["suenoScore"] = None
+            print(f"[{hora}] Sueño error: {e}", flush=True)
 
         uid = os.environ["FERNANDA_UID"]
         db = get_db()
-        hora_sync = datetime.now(ZONA).strftime("%H:%M")
         db.collection("users").document(uid).collection("data").document(
             f"garmin_{fecha}"
-        ).set({**datos, "fecha": fecha, "ultimoSync": hora_sync}, merge=True)
+        ).set({**datos, "fecha": fecha, "ultimoSync": hora}, merge=True)
 
-        print(f"[{datetime.now(ZONA).strftime('%H:%M')}] Garmin sync {fecha}: {json.dumps(datos, ensure_ascii=False)}", flush=True)
+        print(f"[{hora}] Garmin sync {fecha}: {json.dumps(datos, ensure_ascii=False)}", flush=True)
     except Exception as e:
-        print(f"[{datetime.now(ZONA).strftime('%H:%M')}] Garmin sync error: {e}", flush=True)
+        print(f"[{datetime.now(ZONA).strftime('%H:%M')}] Garmin sync error general: {e}", flush=True)
 
 
 if __name__ == "__main__":
     # Horarios en UTC (Mérida = UTC-6 fijo, sin horario de verano desde 2022)
     # 7:30 → 13:30 | 8:30 → 14:30 | 11:25 → 17:25 | 14:00 → 20:00 | 16:00 → 22:00 | 18:00 → 00:00 | 20:00 → 02:00
-    # 8:30am agregado para capturar datos de sueño que Garmin procesa después de despertar
     for hora_utc in ["13:30", "14:30", "17:25", "20:00", "22:00", "00:00", "02:00"]:
         schedule.every().day.at(hora_utc).do(sincronizar)
 
