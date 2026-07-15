@@ -277,23 +277,8 @@ async function registrarComida(descripcion, calorias, proteina = 0, carbos = 0, 
     grasas: acc.grasas + e.grasas,
   }), { calorias: 0, proteina: 0, carbos: 0, grasas: 0 });
   await ref.set({ fecha, entries, total });
-  // Mirror totals + personalized objetivo to WP Firebase for the dashboard
-  const wpPayload = { fecha, total, entradas: entries.length };
-  try {
-    const [cuerpo, garmin, cicloDoc] = await Promise.all([
-      getCuerpoData().catch(() => null),
-      getDatosGarmin().catch(() => null),
-      getCiclo().catch(() => null),
-    ]);
-    const ultimoInbody = (cuerpo?.inbody || []).slice(-1)[0];
-    const cicloInfo = cicloDoc?.ultimoInicio ? calcularCiclo(cicloDoc.ultimoInicio, cicloDoc.duracionPromedio) : null;
-    const cals = calcularCaloriasObjetivo(ultimoInbody, garmin, cicloInfo);
-    if (cals) {
-      wpPayload.objetivo = cals.objetivo;
-      wpPayload.macros = { proteina: cals.proteina, carbos: cals.carbos, grasas: cals.grasas };
-    }
-  } catch(e) { console.warn('registrarComida objetivo:', e.message); }
-  wpUser().doc('nutricion_hoy').set(wpPayload).catch(e => console.error('nutricion wpUser:', e));
+  // Mirror totals to WP Firebase for the dashboard (simple, no extra reads)
+  await wpUser().doc('nutricion_hoy').set({ fecha, total, entradas: entries.length }, { merge: true });
   return { entries, total };
 }
 
