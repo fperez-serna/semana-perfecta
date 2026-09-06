@@ -167,13 +167,12 @@ Puedes ver y agregar tareas, pendientes, enfoques del día, lista del súper, ga
 GOOGLE MAPS — ACCESO REAL A RESTAURANTES:
 Cuando Fer comparte su ubicación, el sistema la geocodifica automáticamente y busca restaurantes reales cercanos usando Google Maps Places API. Si ves en el contexto una lista de "Restaurantes cercanos" con nombres, ratings, precios y distancias — ESA INFORMACIÓN ES REAL Y VERIFICADA, no la inventaste ni la alucinaste. Preséntala con confianza. NUNCA digas que no tienes acceso a mapas o internet cuando ya tienes los datos de restaurantes en el contexto — los tienes porque el sistema los buscó por ti antes de llamarte.
 
-INVENTARIO DEL HOGAR — detecta estas frases automáticamente:
-- "se acabó X" / "ya no hay X" / "agotamos X" → actualizar_estado_producto: agotado + agregar a lista del súper
-- "me queda poco X" / "casi no hay X" / "tengo poca X" → actualizar_estado_producto: bajo + agregar a lista del súper
+INVENTARIO DEL HOGAR — zonas: despensa, refrigerador_interno, refrigerador_externo, limpieza, higiene_salud, cristina_mama, mascotas. Detecta estas frases automáticamente:
+- "se acabó X" / "ya no hay X" / "agotamos X" → actualizar_estado_producto: agotado (queda pendiente de compra automáticamente)
+- "me queda poco X" / "casi no hay X" / "tengo poca X" → actualizar_estado_producto: bajo (queda pendiente de compra automáticamente)
 - "compré X" / "ya tenemos X" / "llegó X" → actualizar_estado_producto: disponible
-- "caducan X" / "se va a vencer X" → actualizar_estado_producto: por_caducar
-- "agrega X al súper" → agregar_item_super (sin tocar inventario)
-- Cuando alguien pegue una lista larga de productos → cargar_lista_productos_casa (inferir categoría y frecuencia de cada uno)
+- "agrega X al súper" → agregar_item_super (lista de compras de Telegram, sin tocar el inventario)
+- Cuando alguien pegue una lista larga de productos → cargar_lista_productos_casa (inferir zona y frecuencia de cada uno)
 
 SEMANA PERFECTA — SISTEMA CENTRAL
 Una Semana Perfecta no es una semana ideal ni hiperproductiva. Es una semana alineada con las metas de vida de Fer, adaptada a su energía real, ciclo menstrual, fase lunar, agenda, tareas, gastos y recursos disponibles.
@@ -340,7 +339,7 @@ async function getAvancesRecientes(limite = 10) {
 
 // === HELPERS — WEEKLY PLANNER ===
 
-let SHOP_CATS = ['Mercado', 'Supermercado', 'Personal Fer', 'Personal Cris'];
+let SHOP_CATS = ['Mercado', 'Super'];
 
 async function getShopCats() {
   try {
@@ -433,7 +432,8 @@ async function agregarItemSuperWP(item, catIndex) {
       [field]: admin.firestore.FieldValue.arrayUnion({ text: item, done: false })
     });
   } catch {
-    const cats = { cat0: [], cat1: [], cat2: [], cat3: [] };
+    const cats = {};
+    SHOP_CATS.forEach((_, i) => { cats[`cat${i}`] = []; });
     cats[`cat${catIndex}`] = [{ text: item, done: false }];
     await wpUser().doc('shopping').set({ cats });
   }
@@ -798,7 +798,7 @@ async function tacharItemSuperWP(itemTexto, catIndex = null) {
   const cats = await getListaSuperWP();
   const lower = itemTexto.toLowerCase();
   // Si no se especifica categoría, busca en todas
-  const indices = catIndex !== null ? [catIndex] : [0, 1, 2, 3];
+  const indices = catIndex !== null ? [catIndex] : SHOP_CATS.map((_, i) => i);
   for (const i of indices) {
     const key = `cat${i}`;
     const items = [...(cats[key] || [])];
@@ -815,7 +815,7 @@ async function tacharItemSuperWP(itemTexto, catIndex = null) {
 async function borrarItemSuperWP(itemTexto, catIndex = null) {
   const cats = await getListaSuperWP();
   const lower = itemTexto.toLowerCase();
-  const indices = catIndex !== null ? [catIndex] : [0, 1, 2, 3];
+  const indices = catIndex !== null ? [catIndex] : SHOP_CATS.map((_, i) => i);
   for (const i of indices) {
     const key = `cat${i}`;
     const items = [...(cats[key] || [])];
@@ -1210,11 +1210,24 @@ async function fetchTextoUrl(url) {
 
 // === INVENTARIO CASA ===
 
+const HOME_ZONES = ['despensa', 'refrigerador_interno', 'refrigerador_externo', 'limpieza', 'higiene_salud', 'cristina_mama', 'mascotas'];
+const HOME_STORES = ['mercado', 'super'];
+const FULLNESS_ESTADOS = { disponible: 100, bajo: 40, agotado: 0 };
+function fullnessColorIcon(fullness, threshold = 20) {
+  const f = fullness ?? 100;
+  const t = threshold ?? 20;
+  if (f <= 0) return '⚪';
+  if (f < t) return '🔴';
+  if (f < t * 2) return '🟡';
+  if (f < 80) return '🔵';
+  return '🟢';
+}
+
 async function getInventarioCasa(filtro = {}) {
   const doc = await wpUser().doc('inventario_casa').get();
   let productos = doc.exists ? (doc.data().productos || []) : [];
-  if (filtro.categoria) productos = productos.filter(p => p.categoria === filtro.categoria);
-  if (filtro.estado) productos = productos.filter(p => p.estado === filtro.estado);
+  if (filtro.zone) productos = productos.filter(p => p.zone === filtro.zone);
+  if (filtro.bajos_o_agotados) productos = productos.filter(p => (p.fullness ?? 100) < (p.threshold ?? 20));
   if (filtro.buscar) {
     const q = filtro.buscar.toLowerCase();
     productos = productos.filter(p => p.nombre.toLowerCase().includes(q));
@@ -1232,7 +1245,15 @@ async function agregarProductoCasa(producto) {
     if (idx >= 0) {
       productos[idx] = { ...productos[idx], ...producto, fechaActualizado: fechaLocalHoy() };
     } else {
-      productos.push({ id: 'p' + Date.now(), ...producto, estado: producto.estado || 'disponible', fechaActualizado: fechaLocalHoy() });
+      productos.push({
+        id: 'p' + Date.now(),
+        fullness: 100,
+        threshold: 20,
+        store: 'super',
+        onList: false,
+        ...producto,
+        fechaActualizado: fechaLocalHoy(),
+      });
     }
     t.set(ref, { productos });
   });
@@ -1248,7 +1269,15 @@ async function cargarListaProductosCasa(lista) {
       const nombreNuevo = producto.nombre.toLowerCase().trim();
       const existe = productos.some(p => p.nombre.toLowerCase().trim() === nombreNuevo);
       if (!existe) {
-        productos.push({ id: 'p' + Date.now() + agregados, ...producto, estado: 'disponible', fechaActualizado: fechaLocalHoy() });
+        productos.push({
+          id: 'p' + Date.now() + agregados,
+          fullness: 100,
+          threshold: 20,
+          store: 'super',
+          onList: false,
+          ...producto,
+          fechaActualizado: fechaLocalHoy(),
+        });
         agregados++;
       }
     }
@@ -1259,7 +1288,7 @@ async function cargarListaProductosCasa(lista) {
 
 async function actualizarProductoCasa(nombre, cambios) {
   const ref = wpUser().doc('inventario_casa');
-  await wpDb.runTransaction(async t => {
+  return await wpDb.runTransaction(async t => {
     const doc = await t.get(ref);
     if (!doc.exists) return false;
     const productos = doc.data().productos || [];
@@ -1335,7 +1364,7 @@ const TOOLS = [
   },
   {
     name: 'agregar_lista_super',
-    description: 'Agrega MÚLTIPLES items a la lista del súper en una sola llamada. Úsala siempre que necesites agregar una lista de ingredientes o compras (ej. basada en un menú semanal). Regla de categorías: frutas y verduras frescas → "Mercado"; lácteos, proteínas, granos, enlatados, limpieza y todo lo demás → "Supermercado". "Personal Fer" y "Personal Cris" solo para artículos de uso personal.',
+    description: 'Agrega MÚLTIPLES items a la lista del súper en una sola llamada. Úsala siempre que necesites agregar una lista de ingredientes o compras (ej. basada en un menú semanal). Regla de categorías: frutas y verduras frescas → "Mercado"; todo lo demás (lácteos, proteínas, granos, enlatados, limpieza, personal) → "Super".',
     input_schema: {
       type: 'object',
       properties: {
@@ -1445,12 +1474,12 @@ const TOOLS = [
   },
   {
     name: 'ver_inventario_casa',
-    description: 'Consulta el inventario de productos del hogar de Fernanda. Úsala cuando pregunte qué tiene en casa, qué le falta, qué está agotado, o cuando necesites saber si tiene un ingrediente disponible.',
+    description: 'Consulta el inventario de productos del hogar de Fernanda. Úsala cuando pregunte qué tiene en casa, qué le falta, qué está bajo o agotado, o cuando necesites saber si tiene un ingrediente disponible.',
     input_schema: {
       type: 'object',
       properties: {
-        categoria: { type: 'string', description: 'Filtrar por: despensa, refrigerador, congelador, limpieza, baño, mascotas, cuidado_mama, farmacia, lavanderia, cocina' },
-        estado: { type: 'string', description: 'Filtrar por: disponible, bajo, agotado, por_caducar' },
+        zone: { type: 'string', enum: HOME_ZONES, description: 'Filtrar por zona' },
+        bajos_o_agotados: { type: 'boolean', description: 'true para ver solo lo que está bajo o agotado (necesita revisión)' },
         buscar: { type: 'string', description: 'Buscar producto por nombre' },
       },
       required: [],
@@ -1463,31 +1492,31 @@ const TOOLS = [
       type: 'object',
       properties: {
         nombre: { type: 'string', description: 'Nombre del producto' },
-        categoria: { type: 'string', description: 'despensa, refrigerador, congelador, limpieza, baño, mascotas, cuidado_mama, farmacia, lavanderia, cocina' },
+        zone: { type: 'string', enum: HOME_ZONES, description: 'Zona donde vive el producto' },
+        store: { type: 'string', enum: HOME_STORES, description: 'Dónde se compra: mercado o super (default: super)' },
         unidad: { type: 'string', description: 'piezas, litros, kg, g, rollos, etc.' },
         frecuencia: { type: 'string', description: 'diario, semanal, quincenal, mensual' },
         prioridad: { type: 'string', description: 'alta, media, baja' },
         notas: { type: 'string', description: 'Notas adicionales (opcional)' },
       },
-      required: ['nombre', 'categoria'],
+      required: ['nombre', 'zone'],
     },
   },
   {
     name: 'actualizar_estado_producto',
-    description: 'Actualiza el estado de un producto del inventario. OBLIGATORIO usar cuando diga: "se acabó X" → agotado, "me queda poco X" → bajo, "compré X" → disponible, "caducan X" → por_caducar. Cuando marques algo como agotado o bajo, agrégalo automáticamente a la lista del súper con agregar_item_super.',
+    description: 'Actualiza el nivel de un producto del inventario (barra de 0-100). OBLIGATORIO usar cuando diga: "se acabó X" → agotado, "me queda poco X" → bajo, "compré X" → disponible. Cuando el producto queda agotado o bajo, se marca automáticamente como pendiente de compra (onList).',
     input_schema: {
       type: 'object',
       properties: {
         nombre: { type: 'string', description: 'Nombre del producto' },
-        estado: { type: 'string', description: 'disponible, bajo, agotado, por_caducar, caducado' },
-        cantidad: { type: 'string', description: 'Cantidad actualizada (opcional)' },
+        estado: { type: 'string', enum: ['disponible', 'bajo', 'agotado'], description: 'Nivel del producto' },
       },
       required: ['nombre', 'estado'],
     },
   },
   {
     name: 'cargar_lista_productos_casa',
-    description: 'Carga una lista grande de productos del hogar de una sola vez. Úsala cuando Fernanda pegue o dicte su lista maestra de productos recurrentes. Infiere categoría, frecuencia y prioridad de cada producto automáticamente.',
+    description: 'Carga una lista grande de productos del hogar de una sola vez. Úsala cuando Fernanda pegue o dicte su lista maestra de productos recurrentes. Infiere zona, tienda, frecuencia y prioridad de cada producto automáticamente.',
     input_schema: {
       type: 'object',
       properties: {
@@ -1498,12 +1527,13 @@ const TOOLS = [
             type: 'object',
             properties: {
               nombre: { type: 'string' },
-              categoria: { type: 'string' },
+              zone: { type: 'string', enum: HOME_ZONES },
+              store: { type: 'string', enum: HOME_STORES },
               unidad: { type: 'string' },
               frecuencia: { type: 'string' },
               prioridad: { type: 'string' },
             },
-            required: ['nombre', 'categoria'],
+            required: ['nombre', 'zone'],
           },
         },
       },
@@ -1796,12 +1826,12 @@ const TOOLS = [
   },
   {
     name: 'agregar_staple',
-    description: 'Agrega un artículo a los staples de Fernanda (cosas que siempre tiene en casa). Usa catIndex: 0 para Mercado, 1 para Supermercado.',
+    description: 'Agrega un artículo a los staples de Fernanda (cosas que siempre tiene en casa). Usa catIndex: 0 para Mercado, 1 para Super.',
     input_schema: {
       type: 'object',
       properties: {
         item: { type: 'string', description: 'Nombre del artículo' },
-        catIndex: { type: 'number', description: '0=Mercado, 1=Supermercado', enum: [0, 1] },
+        catIndex: { type: 'number', description: '0=Mercado, 1=Super', enum: [0, 1] },
       },
       required: ['item', 'catIndex'],
     },
@@ -1962,24 +1992,26 @@ async function ejecutarHerramienta(nombre, input) {
     case 'ver_inventario_casa': {
       const productos = await getInventarioCasa(input);
       if (productos.length === 0) return { resultado: 'No hay productos en el inventario con esos filtros.', etiqueta: null };
-      const porCategoria = {};
+      const porZona = {};
       for (const p of productos) {
-        const cat = p.categoria || 'varios';
-        if (!porCategoria[cat]) porCategoria[cat] = [];
-        const estadoIcon = { disponible: '✅', bajo: '⚠️', agotado: '❌', por_caducar: '⏰', caducado: '🚫' }[p.estado] || '•';
-        porCategoria[cat].push(`${estadoIcon} ${p.nombre}${p.notas ? ` (${p.notas})` : ''}`);
+        const zona = p.zone || 'sin_zona';
+        if (!porZona[zona]) porZona[zona] = [];
+        const icono = fullnessColorIcon(p.fullness, p.threshold);
+        porZona[zona].push(`${icono} ${p.nombre}${p.notas ? ` (${p.notas})` : ''}`);
       }
-      const lista = Object.entries(porCategoria).map(([cat, items]) => `*${cat}:*\n${items.join('\n')}`).join('\n\n');
+      const lista = Object.entries(porZona).map(([zona, items]) => `*${zona}:*\n${items.join('\n')}`).join('\n\n');
       return { resultado: lista, etiqueta: null };
     }
 
     case 'agregar_producto_casa': {
       await agregarProductoCasa(input);
-      return { resultado: `"${input.nombre}" agregado al inventario (${input.categoria}).`, etiqueta: `${input.nombre} en inventario ✓` };
+      return { resultado: `"${input.nombre}" agregado al inventario (${input.zone}).`, etiqueta: `${input.nombre} en inventario ✓` };
     }
 
     case 'actualizar_estado_producto': {
-      const resultado = await actualizarProductoCasa(input.nombre, { estado: input.estado, ...(input.cantidad ? { cantidad: input.cantidad } : {}) });
+      const fullness = FULLNESS_ESTADOS[input.estado];
+      const cambios = { fullness, onList: fullness < 100 };
+      const resultado = await actualizarProductoCasa(input.nombre, cambios);
       if (!resultado) return { resultado: `No encontré "${input.nombre}" en el inventario. ¿Quieres que lo agregue?`, etiqueta: null };
       return { resultado: `"${resultado.nombre}" actualizado → ${input.estado}`, etiqueta: `${resultado.nombre}: ${input.estado} ✓` };
     }
@@ -2243,7 +2275,7 @@ async function ejecutarHerramienta(nombre, input) {
     case 'ver_staples': {
       const staples = await getStaplesWP();
       if (!staples.length) return { resultado: 'No hay staples guardados. Puedes agregar con "agrega X a mis staples".', etiqueta: null };
-      const lista = staples.map(s => `• ${s.text} (${SHOP_CATS[s.catIndex] || 'Supermercado'})`).join('\n');
+      const lista = staples.map(s => `• ${s.text} (${SHOP_CATS[s.catIndex] || 'Super'})`).join('\n');
       return { resultado: `Staples (${staples.length} artículos base):\n${lista}`, etiqueta: null };
     }
 
@@ -2636,10 +2668,10 @@ bot.onText(/\/staples/, async (msg) => {
   const chatId = msg.chat.id;
   const items = await getStaplesWP();
   if (items.length === 0) {
-    await bot.sendMessage(chatId, '📦 No tienes staples guardados todavía.\n\nDile al bot: _"agrega arroz a mis staples de mercado"_ o _"agrega leche a mis staples de supermercado"_', { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, '📦 No tienes staples guardados todavía.\n\nDile al bot: _"agrega arroz a mis staples de mercado"_ o _"agrega leche a mis staples de super"_', { parse_mode: 'Markdown' });
     return;
   }
-  const lista = items.map(i => `• ${i.text} _(${SHOP_CATS[i.catIndex] || 'Supermercado'})_`).join('\n');
+  const lista = items.map(i => `• ${i.text} _(${SHOP_CATS[i.catIndex] || 'Super'})_`).join('\n');
   await bot.sendMessage(chatId, `📦 *Tus staples (${items.length}):*\n${lista}\n\nToca el botón para agregarlos todos a tus listas. Luego borra los que ya tengas en casa.`, {
     parse_mode: 'Markdown',
     reply_markup: { inline_keyboard: [
@@ -3019,9 +3051,9 @@ Al final una línea breve con los ingredientes clave que probablemente hay que c
     const ingredientesTexto = await llamarClaude(prompt);
     const items = ingredientesTexto.split('\n').map(i => i.trim()).filter(i => i.length > 2);
     for (const item of items) {
-      await agregarItemSuperWP(item, 1); // categoría 1 = Supermercado
+      await agregarItemSuperWP(item, 1); // categoría 1 = Super
     }
-    await bot.sendMessage(chatId, `✅ ${items.length} ingredientes agregados al Supermercado:\n${items.join(', ')}`);
+    await bot.sendMessage(chatId, `✅ ${items.length} ingredientes agregados a Super:\n${items.join(', ')}`);
 
   // COMIDA AMBIGUA — fuera o en casa
   } else if (data === 'comida_casa') {
@@ -3086,7 +3118,7 @@ Máximo 8 líneas. Tono directo y cálido.`;
     for (const item of items) {
       await agregarItemSuperWP(item, 0);
     }
-    await bot.sendMessage(chatId, `✓ ${items.length} ingredientes en Supermercado:\n${items.join(', ')}`);
+    await bot.sendMessage(chatId, `✓ ${items.length} ingredientes en Super:\n${items.join(', ')}`);
   }
 });
 

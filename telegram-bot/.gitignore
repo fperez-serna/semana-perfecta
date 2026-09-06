@@ -2,3 +2,4 @@ node_modules/
 .env
 serviceAccount.json
 mi-dashboard-serviceaccount.json
+backups/
